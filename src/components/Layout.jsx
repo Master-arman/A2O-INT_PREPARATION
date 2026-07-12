@@ -1,10 +1,17 @@
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, User, FileUp, Code, Briefcase, Trophy, Mic, Building2, BarChart2, LogOut } from 'lucide-react';
+import { LayoutDashboard, User, FileUp, Code, Briefcase, Trophy, Mic, Building2, BarChart2, LogOut, Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Chatbot from './Chatbot';
 
 const Layout = () => {
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const authUserStr = localStorage.getItem('user');
   let isAdmin = false;
@@ -33,10 +40,40 @@ const Layout = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#0f172a] text-white font-sans overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen bg-[#0f172a] text-white font-sans overflow-hidden">
       <Chatbot />
+      
+      {/* Mobile Top Header */}
+      <div className="md:hidden flex items-center justify-between p-4 glass-panel border-b border-white/10 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-sm shadow-lg shadow-blue-500/30">
+            AI
+          </div>
+          <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+            TechPrep
+          </h1>
+        </div>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+          className="p-2 bg-white/5 border border-white/10 rounded-lg text-white hover:bg-white/10 transition-colors"
+        >
+          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 glass-panel border-r border-[#1e293b]/50 m-4 flex flex-col justify-between hidden md:flex rounded-2xl shadow-2xl z-40">
+      <aside className={`
+        fixed md:relative inset-y-0 left-0 w-64 glass-panel border-r border-[#1e293b]/50 m-4 flex flex-col justify-between rounded-2xl shadow-2xl z-50 transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-[150%] md:translate-x-0'}
+      `}>
         <div className="p-6">
           <div className="flex items-center gap-3 mb-10">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-lg shadow-lg shadow-blue-500/30">
