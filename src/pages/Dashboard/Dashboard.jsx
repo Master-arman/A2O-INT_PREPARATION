@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Target, TrendingUp, Clock, Award, Code2, Cpu } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -25,14 +26,24 @@ const StatCard = ({ title, value, icon: Icon, color, trend }) => (
 );
 
 const Dashboard = () => {
+  const [userName, setUserName] = useState('User');
+
+  useEffect(() => {
+    const authUserStr = localStorage.getItem('user');
+    if (authUserStr) {
+      const authData = JSON.parse(authUserStr);
+      setUserName(authData.name ? authData.name.split(' ')[0] : 'User');
+    }
+  }, []);
+
   return (
     <div className="space-y-8 pb-8">
-      <header className="flex justify-between items-center">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome, Alex! 👋</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Welcome, {userName}! 👋</h1>
           <p className="text-gray-400">Here's your interview preparation progress.</p>
         </div>
-        <Link to="/interviews" className="btn-primary flex items-center gap-2">
+        <Link to="/interviews" className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center">
           <Target className="w-4 h-4" />
           Start Mock Interview
         </Link>
