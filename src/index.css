@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #ffa116;
+  --color-primary-dark: #e08e12;
+  --color-secondary: #8b5cf6;
+  --color-secondary-dark: #7c3aed;
+  --color-background-dark: #1a1a1a;
+  --color-surface-dark: #282828;
+  --color-surface-hover: #3e3e3e;
+  --color-text-primary: #eff1f6;
+  --color-text-secondary: #9e9e9e;
+  --color-border: #424242;
+}
+
+@layer base {
+  body {
+    @apply bg-background-dark text-text-primary antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  select option {
+    @apply bg-surface-dark text-text-primary;
+  }
+}
+
+@layer utilities {
+  .animate-blob {
+    animation: blob 7s infinite;
+  }
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+}
+
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-surface-dark/80 backdrop-blur-md border border-border rounded-xl;
+  }
+  
+  .btn-primary {
+    @apply px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors font-medium cursor-pointer shadow-lg shadow-primary/20;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 bg-surface-dark hover:bg-surface-hover border border-border text-text-primary rounded-lg transition-colors font-medium cursor-pointer;
+  }
+
+  .nav-link {
+    @apply text-text-secondary hover:text-white transition-colors cursor-pointer;
+  }
+}
