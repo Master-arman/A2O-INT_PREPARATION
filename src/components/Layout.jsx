@@ -71,7 +71,7 @@ const Layout = () => {
 
       {/* Sidebar */}
       <aside className={`
-        fixed md:relative inset-y-0 left-0 w-64 glass-panel border-r border-[#1e293b]/50 m-4 flex flex-col justify-between rounded-2xl shadow-2xl z-50 transition-transform duration-300 ease-in-out
+        fixed md:relative inset-y-0 left-0 w-64 glass-panel overflow-hidden border-r border-[#1e293b]/50 m-4 flex flex-col justify-between rounded-2xl shadow-2xl z-50 transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-[150%] md:translate-x-0'}
       `}>
         <div className="p-6 flex-1 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}>
@@ -114,7 +114,7 @@ const Layout = () => {
           </nav>
         </div>
 
-        <div className="p-4 mb-2 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 bg-surface-dark/50">
           <Link to="/auth" onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-red-500/10 hover:text-red-400 transition-all">
             <LogOut className="w-5 h-5" />
             <span className="font-medium">Logout</span>
