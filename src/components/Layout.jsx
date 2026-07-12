@@ -69,13 +69,12 @@ const Layout = () => {
         />
       )}
 
-      {/* Sidebar */}
       <aside className={`
-        fixed md:relative inset-y-0 left-0 w-64 glass-panel overflow-hidden border-r border-[#1e293b]/50 m-4 flex flex-col justify-between rounded-2xl shadow-2xl z-50 transition-transform duration-300 ease-in-out
+        fixed md:relative inset-y-0 left-0 w-64 glass-panel border-r border-[#1e293b]/50 m-4 rounded-2xl shadow-2xl z-50 transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-[150%] md:translate-x-0'}
       `}>
-        <div className="p-6 flex-1 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}>
-          <div className="flex items-center gap-3 mb-6">
+        <div className="p-6 h-full flex flex-col overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex items-center gap-3 mb-8 shrink-0">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-lg shadow-lg shadow-blue-500/30">
               AI
             </div>
@@ -84,7 +83,7 @@ const Layout = () => {
             </h1>
           </div>
           
-          <nav className="space-y-1">
+          <nav className="space-y-1 flex-1">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
@@ -112,13 +111,13 @@ const Layout = () => {
               );
             })}
           </nav>
-        </div>
 
-        <div className="p-4 mb-6 border-t border-white/10">
-          <Link to="/auth" onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-red-500/10 hover:text-red-400 transition-all">
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">Logout</span>
-          </Link>
+          <div className="mt-8 pt-4 border-t border-white/10 shrink-0">
+            <Link to="/auth" onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-red-500/10 hover:text-red-400 transition-all">
+              <LogOut className="w-5 h-5" />
+              <span className="font-medium">Logout</span>
+            </Link>
+          </div>
         </div>
       </aside>
 
