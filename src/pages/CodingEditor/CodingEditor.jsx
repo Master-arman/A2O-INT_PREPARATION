@@ -320,7 +320,7 @@ const CodingEditor = () => {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto h-[calc(100vh-6rem)] flex flex-col pb-4">
+    <div className="max-w-[1400px] mx-auto min-h-[calc(100vh-6rem)] md:h-[calc(100vh-6rem)] flex flex-col pb-4">
       <header className="mb-6 flex justify-between items-end">
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -364,7 +364,7 @@ const CodingEditor = () => {
         </div>
       </header>
 
-      <div className="flex-1 grid lg:grid-cols-2 gap-6 min-h-0">
+      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-2 gap-6 min-h-0">
         {/* Left Side: Question & Hints */}
         <div className="glass-panel overflow-y-auto p-6 flex flex-col">
           <div className="prose prose-invert max-w-none mb-6">
@@ -464,7 +464,7 @@ const CodingEditor = () => {
             </button>
           </div>
           
-          <div className="flex-1 p-4 bg-[#1e1e1e] relative min-h-[400px]">
+          <div className="flex-1 p-4 bg-[#1e1e1e] relative min-h-[300px] md:min-h-[400px]">
             <Editor
               height="100%"
               defaultLanguage={language}
