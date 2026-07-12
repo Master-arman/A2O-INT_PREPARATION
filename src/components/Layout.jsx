@@ -114,7 +114,7 @@ const Layout = () => {
           </nav>
         </div>
 
-        <div className="p-4 border-t border-white/10 bg-surface-dark/50">
+        <div className="p-4 mb-6 border-t border-white/10">
           <Link to="/auth" onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-red-500/10 hover:text-red-400 transition-all">
             <LogOut className="w-5 h-5" />
             <span className="font-medium">Logout</span>
