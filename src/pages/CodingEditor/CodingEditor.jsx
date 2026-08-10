@@ -1,113 +1,27 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Play, CheckSquare, Clock, Cpu, Lightbulb, Code2, AlertTriangle, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Play, CheckSquare, Clock, Cpu, Lightbulb, Code2, AlertTriangle, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const QUESTIONS = [
-  {
-    id: 1,
-    title: 'Find pair with given sum in array',
-    difficulty: 'Medium',
-    topic: 'Two Sum',
-    description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.',
-    exampleInput: 'nums = [2,7,11,15], target = 9',
-    exampleOutput: '[0,1]',
-    explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].',
-    hint: 'Instead of using a nested loop (O(n²)), think about how you can use a Hash Map to store numbers you\'ve already seen. For each number x, check if target - x is already in the map!',
-    boilerplates: {
-      javascript: `function twoSum(nums, target) {\n  // Write your code here\n  \n}`,
-      python: `class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        # Write your code here\n        pass`,
-      java: `class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        return new int[]{};\n    }\n}`,
-      cpp: `class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Write your code here\n        return {};\n    }\n};`
-    }
-  },
-  {
-    id: 2,
-    title: 'Reverse a Linked List',
-    difficulty: 'Easy',
-    topic: 'Linked List',
-    description: 'Given the head of a singly linked list, reverse the list, and return the reversed list.',
-    exampleInput: 'head = [1,2,3,4,5]',
-    exampleOutput: '[5,4,3,2,1]',
-    explanation: 'The linked list is reversed from head to tail.',
-    hint: 'Keep track of three pointers: prev, current, and next. Iterate through the list and change the current node\'s next pointer to point to the prev node.',
-    boilerplates: {
-      javascript: `function reverseList(head) {\n  // Write your code here\n  \n}`,
-      python: `class Solution:\n    def reverseList(self, head: Optional[ListNode]) -> Optional[ListNode]:\n        # Write your code here\n        pass`,
-      java: `class Solution {\n    public ListNode reverseList(ListNode head) {\n        // Write your code here\n        return null;\n    }\n}`,
-      cpp: `class Solution {\npublic:\n    ListNode* reverseList(ListNode* head) {\n        // Write your code here\n        return nullptr;\n    }\n};`
-    }
-  },
-  {
-    id: 3,
-    title: 'Longest Substring Without Repeating Characters',
-    difficulty: 'Medium',
-    topic: 'Sliding Window',
-    description: 'Given a string s, find the length of the longest substring without repeating characters.',
-    exampleInput: 's = "abcabcbb"',
-    exampleOutput: '3',
-    explanation: 'The answer is "abc", with the length of 3.',
-    hint: 'Use a sliding window approach with two pointers and a Hash Set to keep track of characters in the current window.',
-    boilerplates: {
-      javascript: `function lengthOfLongestSubstring(s) {\n  // Write your code here\n  \n}`,
-      python: `class Solution:\n    def lengthOfLongestSubstring(self, s: str) -> int:\n        # Write your code here\n        pass`,
-      java: `class Solution {\n    public int lengthOfLongestSubstring(String s) {\n        // Write your code here\n        return 0;\n    }\n}`,
-      cpp: `class Solution {\npublic:\n    int lengthOfLongestSubstring(string s) {\n        // Write your code here\n        return 0;\n    }\n};`
-    }
-  },
-  {
-    id: 4,
-    title: 'Valid Parentheses',
-    difficulty: 'Easy',
-    topic: 'Stack',
-    description: 'Given a string s containing just the characters "(", ")", "{", "}", "[" and "]", determine if the input string is valid.\nAn input string is valid if open brackets must be closed by the same type of brackets, and open brackets must be closed in the correct order.',
-    exampleInput: 's = "()[]{}"',
-    exampleOutput: 'true',
-    explanation: 'All brackets are matched properly.',
-    hint: 'Use a Stack data structure. Push opening brackets, and when you see a closing bracket, check if it matches the top of the stack.',
-    boilerplates: {
-      javascript: `function isValid(s) {\n  // Write your code here\n  \n}`,
-      python: `class Solution:\n    def isValid(self, s: str) -> bool:\n        # Write your code here\n        pass`,
-      java: `class Solution {\n    public boolean isValid(String s) {\n        // Write your code here\n        return false;\n    }\n}`,
-      cpp: `class Solution {\npublic:\n    bool isValid(string s) {\n        // Write your code here\n        return false;\n    }\n};`
-    }
-  },
-  {
-    id: 5,
-    title: 'Merge Intervals',
-    difficulty: 'Medium',
-    topic: 'Sorting',
-    description: 'Given an array of intervals where intervals[i] = [start_i, end_i], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.',
-    exampleInput: 'intervals = [[1,3],[2,6],[8,10],[15,18]]',
-    exampleOutput: '[[1,6],[8,10],[15,18]]',
-    explanation: 'Since intervals [1,3] and [2,6] overlap, merge them into [1,6].',
-    hint: 'First, sort the intervals based on their start times. Then iterate through them and merge if the current interval starts before the previous one ends.',
-    boilerplates: {
-      javascript: `function merge(intervals) {\n  // Write your code here\n  \n}`,
-      python: `class Solution:\n    def merge(self, intervals: List[List[int]]) -> List[List[int]]:\n        # Write your code here\n        pass`,
-      java: `class Solution {\n    public int[][] merge(int[][] intervals) {\n        // Write your code here\n        return new int[][]{};\n    }\n}`,
-      cpp: `class Solution {\npublic:\n    vector<vector<int>> merge(vector<vector<int>>& intervals) {\n        // Write your code here\n        return {};\n    }\n};`
-    }
-  },
-  {
-    id: 6,
-    title: 'Climbing Stairs',
-    difficulty: 'Easy',
-    topic: 'Dynamic Programming',
-    description: 'You are climbing a staircase. It takes n steps to reach the top. Each time you can either climb 1 or 2 steps. In how many distinct ways can you climb to the top?',
-    exampleInput: 'n = 3',
-    exampleOutput: '3',
-    explanation: 'There are three ways to climb to the top:\\n1. 1 step + 1 step + 1 step\\n2. 1 step + 2 steps\\n3. 2 steps + 1 step',
-    hint: 'This is basically the Fibonacci sequence. The number of ways to reach step N is the sum of ways to reach step N-1 and N-2. Use DP or memoization.',
-    boilerplates: {
-      javascript: `function climbStairs(n) {\n  // Write your code here\n  \n}`,
-      python: `class Solution:\n    def climbStairs(self, n: int) -> int:\n        # Write your code here\n        pass`,
-      java: `class Solution {\n    public int climbStairs(int n) {\n        // Write your code here\n        return 0;\n    }\n}`,
-      cpp: `class Solution {\npublic:\n    int climbStairs(int n) {\n        // Write your code here\n        return 0;\n    }\n};`
-    }
+const FALLBACK_QUESTION = {
+  id: 'FB1',
+  title: 'Find pair with given sum in array',
+  difficulty: 'Medium',
+  topic: 'Two Sum',
+  description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.',
+  exampleInput: 'nums = [2,7,11,15], target = 9',
+  exampleOutput: '[0,1]',
+  explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].',
+  hint: 'Instead of using a nested loop (O(n²)), think about how you can use a Hash Map to store numbers you\'ve already seen. For each number x, check if target - x is already in the map!',
+  boilerplates: {
+    javascript: `function twoSum(nums, target) {\n  // Write your code here\n  \n}`,
+    python: `class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        # Write your code here\n        pass`,
+    java: `class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        return new int[]{};\n    }\n}`,
+    cpp: `class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Write your code here\n        return {};\n    }\n};`
   }
-];
+};
 
 const CodingEditor = () => {
   const location = useLocation();
@@ -141,7 +55,7 @@ const CodingEditor = () => {
   const [results, setResults] = useState(null);
   const [showHint, setShowHint] = useState(false);
 
-  const [questionsList] = useState(() => {
+  const [questionsList, setQuestionsList] = useState(() => {
     if (location.state?.questionDetails) {
       const customQ = location.state.questionDetails;
       const formattedQ = {
@@ -156,10 +70,12 @@ const CodingEditor = () => {
         hint: 'If you get stuck, try using the AI Hint button to guide you, but first attempt to break down the core components.',
         boilerplates: {}
       };
-      return [formattedQ, ...QUESTIONS];
+      return [formattedQ];
     }
-    return QUESTIONS;
+    return [FALLBACK_QUESTION];
   });
+  
+  const [isGeneratingQ, setIsGeneratingQ] = useState(false);
 
   const getBoilerplate = (q, lang) => {
     if (q.boilerplates && q.boilerplates[lang]) return q.boilerplates[lang];
@@ -197,12 +113,253 @@ const CodingEditor = () => {
     setResults(null);
   };
 
-  const handleNextQuestion = () => {
-    const nextIndex = (currentQIndex + 1) % questionsList.length;
-    setCurrentQIndex(nextIndex);
-    setCode(getBoilerplate(questionsList[nextIndex], language));
-    setResults(null);
-    setShowHint(false);
+  const [isPrefetching, setIsPrefetching] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const prefetch = async () => {
+      if (questionsList.length > currentQIndex + 1 || isPrefetching) return;
+      
+      setIsPrefetching(true);
+      try {
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        if (!apiKey) return;
+        
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        
+        const history = JSON.parse(localStorage.getItem('askedQuestions') || '[]');
+        const historyText = history.length > 0 ? history.join(', ') : 'None';
+        
+        const prompt = `You are an expert technical interviewer. Generate a new, unique algorithmic coding interview question.
+        It MUST NOT be any of the following previously asked questions (by title/topic): ${historyText}.
+        
+        Return ONLY a raw JSON object (without markdown code blocks like \`\`\`json) with the exact following structure:
+        {
+          "id": "A unique ID string (e.g. Q7, Q8)",
+          "title": "Question Title",
+          "difficulty": "Easy, Medium, or Hard",
+          "topic": "The main topic (e.g., Two Pointers, Dynamic Programming)",
+          "description": "Full problem description",
+          "exampleInput": "Example input",
+          "exampleOutput": "Example output",
+          "explanation": "Brief explanation of the example",
+          "hint": "A helpful hint for the user",
+          "boilerplates": {
+            "javascript": "function solve() {\\n  // Write your code here\\n}",
+            "python": "class Solution:\\n    def solve(self):\\n        # Write your code here\\n        pass",
+            "java": "class Solution {\\n    public void solve() {\\n        // Write your code here\\n    }\\n}",
+            "cpp": "class Solution {\\npublic:\\n    void solve() {\\n        // Write your code here\\n    }\\n}"
+          }
+        }`;
+
+        const result = await model.generateContent(prompt);
+        let text = result.response.text().trim();
+        text = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
+        
+        const newQuestion = JSON.parse(text);
+        
+        history.push(newQuestion.title);
+        localStorage.setItem('askedQuestions', JSON.stringify(history));
+        
+        if (mounted) {
+          setQuestionsList(prev => [...prev, newQuestion]);
+        }
+      } catch (error) {
+        console.error("Prefetch error:", error);
+      } finally {
+        if (mounted) setIsPrefetching(false);
+      }
+    };
+
+    prefetch();
+    return () => { mounted = false; };
+  }, [currentQIndex, questionsList.length, isPrefetching]);
+
+  const handleNextQuestion = async () => {
+    // Check if we already have the next question pre-fetched
+    if (currentQIndex + 1 < questionsList.length) {
+      const nextIndex = currentQIndex + 1;
+      setCurrentQIndex(nextIndex);
+      setCode(getBoilerplate(questionsList[nextIndex], language));
+      setResults(null);
+      setShowHint(false);
+      return;
+    }
+
+    // If they click too fast before pre-fetch finishes, we manually fetch
+    setIsGeneratingQ(true);
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        alert("Gemini API key is missing. Please add VITE_GEMINI_API_KEY to your .env file.");
+        setIsGeneratingQ(false);
+        return;
+      }
+      
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      
+      const history = JSON.parse(localStorage.getItem('askedQuestions') || '[]');
+      const historyText = history.length > 0 ? history.join(', ') : 'None';
+      
+      const prompt = `You are an expert technical interviewer. Generate a new, unique algorithmic coding interview question.
+      It MUST NOT be any of the following previously asked questions (by title/topic): ${historyText}.
+      
+      Return ONLY a raw JSON object (without markdown code blocks like \`\`\`json) with the exact following structure:
+      {
+        "id": "A unique ID string (e.g. Q7, Q8)",
+        "title": "Question Title",
+        "difficulty": "Easy, Medium, or Hard",
+        "topic": "The main topic (e.g., Two Pointers, Dynamic Programming)",
+        "description": "Full problem description",
+        "exampleInput": "Example input",
+        "exampleOutput": "Example output",
+        "explanation": "Brief explanation of the example",
+        "hint": "A helpful hint for the user",
+        "boilerplates": {
+          "javascript": "function solve() {\\n  // Write your code here\\n}",
+          "python": "class Solution:\\n    def solve(self):\\n        # Write your code here\\n        pass",
+          "java": "class Solution {\\n    public void solve() {\\n        // Write your code here\\n    }\\n}",
+          "cpp": "class Solution {\\npublic:\\n    void solve() {\\n        // Write your code here\\n    }\\n}"
+        }
+      }`;
+
+      const result = await model.generateContent(prompt);
+      let text = result.response.text().trim();
+      text = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
+      
+      const newQuestion = JSON.parse(text);
+      
+      // Save to history so we don't repeat it
+      history.push(newQuestion.title);
+      localStorage.setItem('askedQuestions', JSON.stringify(history));
+      
+      setQuestionsList(prev => [...prev, newQuestion]);
+      setCurrentQIndex(prev => prev + 1);
+      setCode(getBoilerplate(newQuestion, language));
+      setResults(null);
+      setShowHint(false);
+    } catch (error) {
+      console.error("Error generating question:", error);
+      
+      // Fallback questions when API fails
+      const fallbackQuestions = [
+        {
+          id: 'FB2',
+          title: 'Reverse a Linked List',
+          difficulty: 'Easy',
+          topic: 'Linked List',
+          description: 'Given the head of a singly linked list, reverse the list, and return the reversed list.\n\nYou should try to solve this in O(1) space and O(n) time complexity.',
+          exampleInput: 'head = [1,2,3,4,5]',
+          exampleOutput: '[5,4,3,2,1]',
+          explanation: 'The linked list 1->2->3->4->5 is reversed to 5->4->3->2->1.',
+          hint: 'Use three pointers: prev, curr, and next. Iterate through the list, changing the next pointer of the current node to point to the previous node.',
+          boilerplates: {
+            javascript: `function reverseList(head) {\n  // Write your code here\n}`,
+            python: `class Solution:\n    def reverseList(self, head):\n        # Write your code here\n        pass`,
+            java: `class Solution {\n    public ListNode reverseList(ListNode head) {\n        // Write your code here\n        return null;\n    }\n}`,
+            cpp: `class Solution {\npublic:\n    ListNode* reverseList(ListNode* head) {\n        // Write your code here\n        return nullptr;\n    }\n};`
+          }
+        },
+        {
+          id: 'FB3',
+          title: 'Valid Parentheses',
+          difficulty: 'Easy',
+          topic: 'Stack',
+          description: 'Given a string s containing just the characters "(", ")", "{", "}", "[" and "]", determine if the input string is valid.\n\nAn input string is valid if open brackets are closed by the same type of brackets, and in the correct order.',
+          exampleInput: 's = "()[]{}"',
+          exampleOutput: 'true',
+          explanation: 'All brackets are properly closed.',
+          hint: 'Use a stack to keep track of the opening brackets. When you encounter a closing bracket, pop the top of the stack and check if it matches.',
+          boilerplates: {
+            javascript: `function isValid(s) {\n  // Write your code here\n}`,
+            python: `class Solution:\n    def isValid(self, s: str) -> bool:\n        # Write your code here\n        pass`,
+            java: `class Solution {\n    public boolean isValid(String s) {\n        // Write your code here\n        return false;\n    }\n}`,
+            cpp: `class Solution {\npublic:\n    bool isValid(string s) {\n        // Write your code here\n        return false;\n    }\n};`
+          }
+        },
+        {
+          id: 'FB4',
+          title: 'Merge Intervals',
+          difficulty: 'Medium',
+          topic: 'Sorting',
+          description: 'Given an array of intervals where intervals[i] = [starti, endi], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.',
+          exampleInput: 'intervals = [[1,3],[2,6],[8,10],[15,18]]',
+          exampleOutput: '[[1,6],[8,10],[15,18]]',
+          explanation: 'Since intervals [1,3] and [2,6] overlap, merge them into [1,6].',
+          hint: 'First, sort the intervals by their start times. Then, iterate through and merge them if the current interval starts before the previous one ends.',
+          boilerplates: {
+            javascript: `function merge(intervals) {\n  // Write your code here\n}`,
+            python: `class Solution:\n    def merge(self, intervals: List[List[int]]) -> List[List[int]]:\n        # Write your code here\n        pass`,
+            java: `class Solution {\n    public int[][] merge(int[][] intervals) {\n        // Write your code here\n        return new int[0][0];\n    }\n}`,
+            cpp: `class Solution {\npublic:\n    vector<vector<int>> merge(vector<vector<int>>& intervals) {\n        // Write your code here\n        return {};\n    }\n};`
+          }
+        },
+        {
+          id: 'FB5',
+          title: 'Maximum Subarray',
+          difficulty: 'Medium',
+          topic: 'Dynamic Programming',
+          description: 'Given an integer array nums, find the subarray with the largest sum, and return its sum.',
+          exampleInput: 'nums = [-2,1,-3,4,-1,2,1,-5,4]',
+          exampleOutput: '6',
+          explanation: 'The subarray [4,-1,2,1] has the largest sum 6.',
+          hint: 'Kadane\'s algorithm is perfect here. Keep track of the current subarray sum and the maximum sum seen so far. If the current sum becomes negative, reset it to 0.',
+          boilerplates: {
+            javascript: `function maxSubArray(nums) {\n  // Write your code here\n}`,
+            python: `class Solution:\n    def maxSubArray(self, nums: List[int]) -> int:\n        # Write your code here\n        pass`,
+            java: `class Solution {\n    public int maxSubArray(int[] nums) {\n        // Write your code here\n        return 0;\n    }\n}`,
+            cpp: `class Solution {\npublic:\n    int maxSubArray(vector<int>& nums) {\n        // Write your code here\n        return 0;\n    }\n};`
+          }
+        },
+        {
+          id: 'FB6',
+          title: 'Climbing Stairs',
+          difficulty: 'Easy',
+          topic: 'Dynamic Programming',
+          description: 'You are climbing a staircase. It takes n steps to reach the top. Each time you can either climb 1 or 2 steps. In how many distinct ways can you climb to the top?',
+          exampleInput: 'n = 3',
+          exampleOutput: '3',
+          explanation: 'There are three ways to climb to the top: 1. 1 step + 1 step + 1 step, 2. 1 step + 2 steps, 3. 2 steps + 1 step',
+          hint: 'This is similar to the Fibonacci sequence! The number of ways to reach step n is the sum of ways to reach step n-1 and step n-2.',
+          boilerplates: {
+            javascript: `function climbStairs(n) {\n  // Write your code here\n}`,
+            python: `class Solution:\n    def climbStairs(self, n: int) -> int:\n        # Write your code here\n        pass`,
+            java: `class Solution {\n    public int climbStairs(int n) {\n        // Write your code here\n        return 0;\n    }\n}`,
+            cpp: `class Solution {\npublic:\n    int climbStairs(int n) {\n        // Write your code here\n        return 0;\n    }\n};`
+          }
+        },
+        {
+          id: 'FB7',
+          title: 'Product of Array Except Self',
+          difficulty: 'Medium',
+          topic: 'Arrays',
+          description: 'Given an integer array nums, return an array answer such that answer[i] is equal to the product of all the elements of nums except nums[i].\n\nYou must write an algorithm that runs in O(n) time and without using the division operation.',
+          exampleInput: 'nums = [1,2,3,4]',
+          exampleOutput: '[24,12,8,6]',
+          explanation: 'answer[0] = 2 * 3 * 4 = 24. answer[1] = 1 * 3 * 4 = 12.',
+          hint: 'Calculate the prefix product for each element, and then the suffix product. Multiply them together to get the result without division.',
+          boilerplates: {
+            javascript: `function productExceptSelf(nums) {\n  // Write your code here\n}`,
+            python: `class Solution:\n    def productExceptSelf(self, nums: List[int]) -> List[int]:\n        # Write your code here\n        pass`,
+            java: `class Solution {\n    public int[] productExceptSelf(int[] nums) {\n        // Write your code here\n        return new int[0];\n    }\n}`,
+            cpp: `class Solution {\npublic:\n    vector<int> productExceptSelf(vector<int>& nums) {\n        // Write your code here\n        return {};\n    }\n};`
+          }
+        }
+      ];
+      
+      const nextQ = fallbackQuestions[(currentQIndex) % fallbackQuestions.length];
+      const newNextQ = { ...nextQ, id: 'FB' + (questionsList.length + 1) };
+      
+      setQuestionsList(prev => [...prev, newNextQ]);
+      setCurrentQIndex(prev => prev + 1);
+      setCode(getBoilerplate(newNextQ, language));
+      setResults(null);
+      setShowHint(false);
+    } finally {
+      setIsGeneratingQ(false);
+    }
   };
 
   const updateAnalytics = (score, acc) => {
@@ -346,13 +503,18 @@ const CodingEditor = () => {
             initial={results?.status === 'Success' ? { opacity: 0, scale: 0.9 } : false}
             animate={results?.status === 'Success' ? { opacity: 1, scale: 1 } : false}
             onClick={handleNextQuestion}
-            className={`py-2 px-4 flex items-center gap-2 transition-all active:scale-95 rounded-xl font-medium ${
+            disabled={isGeneratingQ}
+            className={`py-2 px-4 flex items-center gap-2 transition-all active:scale-95 rounded-xl font-medium disabled:opacity-50 ${
               results?.status === 'Success' 
                 ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/20'
                 : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10'
             }`}
           >
-            {results?.status === 'Success' ? 'Next Question' : 'Skip Question'} <ChevronRight className="w-4 h-4" />
+            {isGeneratingQ ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Generating AI Question...</>
+            ) : (
+              <>{results?.status === 'Success' ? 'Next Question' : 'Skip Question'} <ChevronRight className="w-4 h-4" /></>
+            )}
           </motion.button>
           <button 
             onClick={() => setShowHint(!showHint)} 
