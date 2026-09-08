@@ -714,7 +714,33 @@ const Courses = () => {
     },
   ]);
   const [isFixModalOpen, setIsFixModalOpen] = useState(false);
+  const [outputMode, setOutputMode] = useState('auto'); // 'auto', 'preview', 'console'
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const chatBottomRef = useRef(null);
+
+  // Auto detect if code is visual HTML/CSS
+  const isHtmlCode = useMemo(() => {
+    if (!userCode) return false;
+    const lower = userCode.toLowerCase();
+    return (
+      selectedLang === 'html' ||
+      selectedLang === 'css' ||
+      lower.includes('<!doctype') ||
+      lower.includes('<html') ||
+      lower.includes('<body') ||
+      lower.includes('<div') ||
+      lower.includes('<img') ||
+      lower.includes('<nav') ||
+      lower.includes('<style') ||
+      lower.includes('<table') ||
+      lower.includes('<form') ||
+      lower.includes('<button') ||
+      lower.includes('document.createelement') ||
+      lower.includes('innerhtml')
+    );
+  }, [userCode, selectedLang]);
+
+  const effectiveOutputMode = outputMode === 'auto' ? (isHtmlCode ? 'preview' : 'console') : outputMode;
 
   // Auto-scroll chat to latest message
   useEffect(() => {
@@ -1940,36 +1966,74 @@ CODE:
                 />
               </div>
 
-              {/* Output Console or Live HTML Preview */}
-              <div className="p-4 bg-[#181818]">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8a8a8a]">
-                    {selectedLang === 'html' || selectedLang === 'css' ? 'Live Browser Render' : 'Console Execution Output'}
-                  </p>
-                  {codeOutput && (
-                    <span className="text-[10px] text-[#00b8a3] flex items-center gap-1">
-                      <Check className="h-3 w-3" /> Live
-                    </span>
-                  )}
+              {/* Output Area with Live Browser Preview vs Console Logs Tabs */}
+              <div className="p-4 bg-[#181818] flex flex-col">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-[#2d2d2d] pb-2">
+                  {/* Output Mode Switcher Tabs */}
+                  <div className="flex items-center gap-1 bg-[#121212] p-0.5 rounded-lg border border-[#333]">
+                    <button
+                      onClick={() => setOutputMode('preview')}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                        effectiveOutputMode === 'preview'
+                          ? 'bg-[#00b8a3] text-black shadow-md'
+                          : 'text-[#8a8a8a] hover:text-white'
+                      }`}
+                      title="View live rendered HTML / CSS UI"
+                    >
+                      <Globe className="h-3 w-3" />
+                      <span>Live Web Preview</span>
+                    </button>
+
+                    <button
+                      onClick={() => setOutputMode('console')}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                        effectiveOutputMode === 'console'
+                          ? 'bg-[#ffa116] text-black shadow-md'
+                          : 'text-[#8a8a8a] hover:text-white'
+                      }`}
+                      title="View terminal logs and console.log outputs"
+                    >
+                      <Terminal className="h-3 w-3" />
+                      <span>Console Logs</span>
+                    </button>
+                  </div>
+
+                  {/* Actions: Fullscreen & Live Status */}
+                  <div className="flex items-center gap-2">
+                    {codeOutput && (
+                      <span className="text-[10px] text-[#00b8a3] flex items-center gap-1 font-semibold">
+                        <Check className="h-3 w-3" /> Ready
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setIsPreviewFullscreen(true)}
+                      className="rounded p-1 text-[#8a8a8a] hover:bg-[#252525] hover:text-white transition-colors"
+                      title="Expand Preview Fullscreen"
+                    >
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
 
-                {selectedLang === 'html' || selectedLang === 'css' ? (
-                  <div className="h-[255px] w-full overflow-auto rounded-lg border border-[#333333] bg-[#111111] p-3 shadow-inner">
+                {/* Tab 1: Live Browser Render (HTML / CSS / Visual DOM) */}
+                {effectiveOutputMode === 'preview' ? (
+                  <div className="h-[255px] w-full overflow-auto rounded-lg border border-[#333333] bg-[#111111] p-1 shadow-inner relative">
                     <iframe
                       title="HTML Preview"
                       srcDoc={userCode}
-                      className="w-full h-full min-h-[220px] border-0"
+                      className="w-full h-full min-h-[240px] border-0 rounded bg-white/5"
                       sandbox="allow-scripts"
                     />
                   </div>
                 ) : (
+                  /* Tab 2: Console Execution Output (JS / Python / Logs) */
                   <div className="h-[255px] w-full overflow-auto rounded-lg border border-[#333333] bg-[#111111] p-3 font-mono text-xs text-[#00b8a3] shadow-inner">
                     {codeOutput ? (
-                      <pre className="whitespace-pre-wrap">{codeOutput}</pre>
+                      <pre className="whitespace-pre-wrap leading-relaxed">{codeOutput}</pre>
                     ) : (
                       <div className="flex h-full flex-col items-center justify-center text-center text-[#666]">
-                        <Terminal className="h-6 w-6 mb-2 opacity-40" />
-                        <span>Click "Run Code" above to execute your edits and view live console outputs.</span>
+                        <Terminal className="h-6 w-6 mb-2 opacity-40 text-[#ffa116]" />
+                        <span>Click "Run Code" above to execute and view console outputs.</span>
                       </div>
                     )}
                   </div>
@@ -1977,6 +2041,32 @@ CODE:
               </div>
             </div>
           </div>
+
+          {/* Fullscreen Output Preview Modal */}
+          {isPreviewFullscreen && (
+            <div className="fixed inset-0 z-50 flex flex-col bg-black/90 p-4 backdrop-blur-md animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-[#383838] bg-[#1e1e1e] px-4 py-3 rounded-t-xl">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-[#00b8a3]" />
+                  <span className="font-bold text-white text-xs">Live Fullscreen Browser Render</span>
+                </div>
+                <button
+                  onClick={() => setIsPreviewFullscreen(false)}
+                  className="rounded-lg p-1.5 text-[#8a8a8a] hover:bg-[#333] hover:text-white"
+                >
+                  <Minimize2 className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex-1 bg-[#111] rounded-b-xl border border-t-0 border-[#383838] overflow-hidden">
+                <iframe
+                  title="Fullscreen HTML Preview"
+                  srcDoc={userCode}
+                  className="w-full h-full border-0 bg-white/5"
+                  sandbox="allow-scripts"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Previous / Next Navigation Bar (W3Schools Style) */}
           <div className="flex items-center justify-between rounded-xl border border-[#383838] bg-[#262626] p-4 shadow-lg">
