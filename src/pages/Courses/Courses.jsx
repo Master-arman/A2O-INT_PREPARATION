@@ -849,6 +849,335 @@ const Courses = () => {
     }, 450);
   };
 
+  const generateAiCodeReply = (query, lang, topic) => {
+    const q = query.toLowerCase();
+
+    // 1. NAVBAR / NAVIGATION BAR
+    if (q.includes('nav') || q.includes('navbar') || q.includes('navigation') || q.includes('header')) {
+      const navCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Modern Responsive Navbar</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+    body { background: #121212; color: #fff; padding: 20px; }
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1e1e1e;
+      padding: 14px 28px;
+      border-radius: 12px;
+      border: 1px solid #333;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #ffa116;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-links {
+      display: flex;
+      list-style: none;
+      gap: 20px;
+    }
+    .nav-links a {
+      color: #b3b3b3;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #ffa116; }
+    .cta-btn {
+      background: #ffa116;
+      color: #000;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s, background 0.2s;
+    }
+    .cta-btn:hover { background: #e08e13; transform: translateY(-1px); }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="#" class="logo">⚡ TechPrep</a>
+    <ul class="nav-links">
+      <li><a href="#">Home</a></li>
+      <li><a href="#">Courses</a></li>
+      <li><a href="#">Practice</a></li>
+      <li><a href="#">Interviews</a></li>
+    </ul>
+    <button class="cta-btn">Get Started</button>
+  </nav>
+  <div style="margin-top: 30px; text-align: center; color: #888;">
+    <h2>Welcome to your live rendered Navbar!</h2>
+    <p>Click "Run Code" or edit the colors and links above.</p>
+  </div>
+</body>
+</html>`;
+      return {
+        text: `Here is a modern, responsive **Navbar** with flexbox layout, hover micro-interactions, and dark theme styling. Click **"⚡ Run in Playground"** below to preview and test it live!`,
+        code: navCode,
+        codeLang: 'html',
+      };
+    }
+
+    // 2. BUTTONS & ANIMATIONS
+    if (q.includes('button') || q.includes('btn') || q.includes('animation') || q.includes('glow')) {
+      const btnCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Glow Animated Buttons</title>
+  <style>
+    body { background: #181818; display: flex; gap: 20px; justify-content: center; align-items: center; min-height: 250px; }
+    .glow-btn {
+      position: relative;
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #000;
+      background: #ffa116;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 15px rgba(255, 161, 22, 0.4);
+    }
+    .glow-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 25px rgba(255, 161, 22, 0.8);
+      background: #ffb443;
+    }
+    .glow-btn:active { transform: scale(0.96); }
+  </style>
+</head>
+<body>
+  <button class="glow-btn">⚡ Start Practice</button>
+</body>
+</html>`;
+      return {
+        text: `Here is a modern **Glow & Shimmer Button** with smooth hover lift and tactile active feedback:`,
+        code: btnCode,
+        codeLang: 'html',
+      };
+    }
+
+    // 3. LOGIN / SIGNUP FORM
+    if (q.includes('form') || q.includes('login') || q.includes('signup') || q.includes('input')) {
+      const formCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Modern Login Form</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, sans-serif; }
+    body { background: #121212; display: flex; justify-content: center; align-items: center; min-height: 280px; padding: 20px; }
+    .form-card {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      padding: 24px;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 340px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .form-card h2 { color: #fff; font-size: 1.1rem; margin-bottom: 16px; text-align: center; }
+    .input-group { margin-bottom: 12px; }
+    .input-group label { display: block; font-size: 0.75rem; color: #aaa; margin-bottom: 4px; font-weight: 600; }
+    .input-group input {
+      width: 100%;
+      padding: 10px;
+      background: #121212;
+      border: 1px solid #383838;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .input-group input:focus { border-color: #ffa116; }
+    .submit-btn {
+      width: 100%;
+      background: #ffa116;
+      color: #000;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .submit-btn:hover { background: #e08e13; }
+  </style>
+</head>
+<body>
+  <div class="form-card">
+    <h2>Account Login</h2>
+    <form onsubmit="event.preventDefault(); alert('Login submitted successfully!');">
+      <div class="input-group">
+        <label>Email Address</label>
+        <input type="email" placeholder="you@company.com" required />
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" placeholder="••••••••" required />
+      </div>
+      <button type="submit" class="submit-btn">Sign In</button>
+    </form>
+  </div>
+</body>
+</html>`;
+      return {
+        text: `Here is a complete **Login / Input Form** component styled with dark UI and interactive submission:`,
+        code: formCode,
+        codeLang: 'html',
+      };
+    }
+
+    // 4. FLEXBOX & CSS GRID
+    if (q.includes('flexbox') || q.includes('grid') || q.includes('center') || q.includes('layout')) {
+      const layoutCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flexbox & Grid Layout</title>
+  <style>
+    body { background: #121212; font-family: system-ui, sans-serif; padding: 20px; color: #fff; }
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: #1e1e1e;
+      border: 1px solid #383838;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #ffa116; }
+    .card h3 { color: #ffa116; font-size: 0.95rem; margin-bottom: 6px; }
+    .card p { font-size: 0.75rem; color: #888; }
+  </style>
+</head>
+<body>
+  <div class="grid-container">
+    <div class="card"><h3>Feature 1</h3><p>Fast Rendering</p></div>
+    <div class="card"><h3>Feature 2</h3><p>Live Code Run</p></div>
+    <div class="card"><h3>Feature 3</h3><p>AI Tutor</p></div>
+  </div>
+</body>
+</html>`;
+      return {
+        text: `Here is a responsive **CSS Grid & Flexbox Layout** that automatically reflows across mobile and desktop screens:`,
+        code: layoutCode,
+        codeLang: 'html',
+      };
+    }
+
+    // 5. ALGORITHMS (Two Sum, Binary Search, Reverse)
+    if (q.includes('two sum') || q.includes('binary search') || q.includes('reverse') || q.includes('sort') || q.includes('algorithm')) {
+      let algoCode = '';
+      if (lang === 'python') {
+        algoCode = `# Binary Search Algorithm in Python
+def binary_search(arr, target):
+    left, right = 0, len(arr) - 1
+    while left <= right:
+        mid = (left + right) // 2
+        if arr[mid] == target:
+            return mid  # Found target index
+        elif arr[mid] < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+    return -1
+
+# Demonstration
+numbers = [2, 5, 8, 12, 16, 23, 38, 56, 72, 91]
+target_val = 23
+result = binary_search(numbers, target_val)
+
+print(f"Sorted Array: {numbers}")
+print(f"Target {target_val} found at index: {result}")`;
+      } else {
+        algoCode = `// Two Sum Algorithm (O(n) Time Complexity using Hash Map)
+function twoSum(nums, target) {
+  const map = new Map();
+  for (let i = 0; i < nums.length; i++) {
+    const complement = target - nums[i];
+    if (map.has(complement)) {
+      return [map.get(complement), i];
+    }
+    map.set(nums[i], i);
+  }
+  return [];
+}
+
+// Test cases
+const nums = [2, 7, 11, 15];
+const target = 9;
+const indices = twoSum(nums, target);
+
+console.log("Input Array:", nums);
+console.log("Target Sum:", target);
+console.log("Indices found:", indices);
+console.log("Values:", nums[indices[0]], "+", nums[indices[1]], "=", target);`;
+      }
+
+      return {
+        text: `Here is the optimal $O(\\log n)$ / $O(n)$ algorithm implementation with test cases:`,
+        code: algoCode,
+        codeLang: lang === 'python' ? 'python' : 'javascript',
+      };
+    }
+
+    // 6. JAVASCRIPT / ASYNC / PROMISES / DEBOUNCE
+    if (q.includes('debounce') || q.includes('throttle') || q.includes('fetch') || q.includes('promise') || q.includes('async')) {
+      const jsCode = `// Debounce function implementation in JavaScript
+function debounce(func, delay = 300) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => func.apply(this, args), delay);
+  };
+}
+
+// Simulated search handler
+const logSearch = debounce((query) => {
+  console.log("API Query dispatched for:", query);
+}, 200);
+
+console.log("Typing 'React' rapidly...");
+logSearch("R");
+logSearch("Re");
+logSearch("Rea");
+logSearch("React"); // Only this final call executes after 200ms!`;
+      return {
+        text: `Here is the standard JavaScript **Debounce utility** pattern used in search bars and resize events:`,
+        code: jsCode,
+        codeLang: 'javascript',
+      };
+    }
+
+    // 7. DEFAULT TOPIC SYNTHESIS
+    return {
+      text: `**AI Guide for "${query}":**\n\nRegarding **${topic.title}** in **${COURSE_LANGUAGES.find(l => l.id === lang)?.name}**:\n\n${topic.summary}\n\n**Core Syntax & Best Practice:**\n${topic.keyTakeaways?.[0] || 'Write clean, modular code with descriptive variable naming.'}`,
+      code: topic.codeExample,
+      codeLang: lang,
+    };
+  };
+
   const sendAiQuestion = (questionText) => {
     if (!questionText.trim()) return;
     
@@ -859,23 +1188,23 @@ const Courses = () => {
 
     setTimeout(() => {
       setIsAiLoading(false);
-      let reply = '';
-      const qLower = questionText.toLowerCase();
+      const aiReplyData = generateAiCodeReply(questionText, selectedLang, currentTopic);
+      setAiChatHistory((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: aiReplyData.text,
+          code: aiReplyData.code,
+          codeLang: aiReplyData.codeLang,
+        },
+      ]);
+    }, 450);
+  };
 
-      if (qLower.includes('interview') || qLower.includes('question')) {
-        reply = `**Top Interview Questions for ${currentTopic.title}:**\n\n1. **Core Concept:** How does ${currentTopic.title} work under the hood in ${COURSE_LANGUAGES.find(l => l.id === selectedLang)?.name}?\n2. **Performance:** What are the time/space complexity or rendering implications?\n3. **Real-world:** How would you architect this to avoid common production bugs?`;
-      } else if (qLower.includes('edge case') || qLower.includes('error') || qLower.includes('pitfall') || qLower.includes('bug')) {
-        reply = `**Key Edge Cases & Pitfalls to Avoid:**\n\n• **Null / Undefined States:** Always validate input parameters before processing.\n• **Boundary Conditions:** Verify off-by-one errors and empty array/object states.\n• **Async Timing:** Guard against race conditions when state updates after component unmount.`;
-      } else if (qLower.includes('simply') || qLower.includes('simple') || qLower.includes('beginner') || qLower.includes('easy')) {
-        reply = `**Simple Explanation of ${currentTopic.title}:**\n\n${currentTopic.summary}\n\n**Think of it like:** A standard building block. In ${COURSE_LANGUAGES.find(l => l.id === selectedLang)?.name}, you use this whenever you need clean, maintainable logic.`;
-      } else if (qLower.includes('example') || qLower.includes('real world') || qLower.includes('use case')) {
-        reply = `**Real-World Production Example:**\n\nIn enterprise web applications, ${currentTopic.title} is utilized across dashboard widgets, authenticated user workflows, and state synchronization.\n\n**Best Practice:** Keep logic modular and test each function with unit tests.`;
-      } else {
-        reply = `**AI Analysis on "${questionText}":**\n\nRegarding **${currentTopic.title}** in **${COURSE_LANGUAGES.find(l => l.id === selectedLang)?.name}**:\n\n${currentTopic.summary}\n\n**Key Takeaway:** ${currentTopic.keyTakeaways?.[0] || 'Write clean, modular code with descriptive variable naming and proper error boundaries.'}\n\nYou can also click **"Fix with AI"** in the playground to analyze your editable code!`;
-      }
-
-      setAiChatHistory((prev) => [...prev, { role: 'assistant', text: reply }]);
-    }, 500);
+  const applyAiCodeToPlayground = (snippet) => {
+    if (!snippet) return;
+    setUserCode(snippet);
+    runCode();
   };
 
   const copyCode = () => {
@@ -1084,25 +1413,57 @@ const Courses = () => {
             </div>
 
             {/* In-Card Chat History */}
-            <div className="max-h-48 overflow-y-auto space-y-2 rounded-lg border border-[#383838] bg-[#1a1a1a] p-2.5">
+            <div className="max-h-64 overflow-y-auto space-y-2.5 rounded-lg border border-[#383838] bg-[#1a1a1a] p-2.5">
               {aiChatHistory.map((msg, i) => (
                 <div
                   key={i}
-                  className={`p-2 rounded-lg text-[11px] leading-relaxed ${
+                  className={`p-2.5 rounded-lg text-[11px] leading-relaxed ${
                     msg.role === 'user'
                       ? 'bg-[#ffa116]/15 border border-[#ffa116]/30 text-white ml-2'
                       : 'bg-[#262626] border border-[#383838] text-[#d1d1d1]'
                   }`}
                 >
-                  <p className="font-bold text-[10px] text-[#8a8a8a] mb-0.5">
-                    {msg.role === 'user' ? 'You' : '🤖 AI Tutor'}
+                  <p className="font-bold text-[10px] text-[#8a8a8a] mb-1 flex items-center justify-between">
+                    <span>{msg.role === 'user' ? '👤 You' : '🤖 AI Code Tutor'}</span>
+                    {msg.code && (
+                      <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-[#ffa116]/20 text-[#ffa116] font-bold">
+                        {msg.codeLang || 'Code'}
+                      </span>
+                    )}
                   </p>
-                  <div className="whitespace-pre-line">{msg.text}</div>
+                  <div className="whitespace-pre-line mb-1.5">{msg.text}</div>
+
+                  {/* Rendered Code Block if present */}
+                  {msg.code && (
+                    <div className="mt-2 space-y-1.5">
+                      <div className="relative rounded-lg border border-[#383838] bg-[#141414] p-2">
+                        <pre className="max-h-36 overflow-auto font-mono text-[10px] leading-tight text-[#00b8a3]">
+                          {msg.code}
+                        </pre>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => applyAiCodeToPlayground(msg.code)}
+                          className="flex-1 flex items-center justify-center gap-1 rounded bg-[#ffa116] py-1 text-[10px] font-bold text-black hover:bg-[#e08e13] transition-colors"
+                        >
+                          <Play className="h-2.5 w-2.5 fill-black" />
+                          <span>⚡ Run in Playground</span>
+                        </button>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(msg.code)}
+                          className="rounded border border-[#383838] bg-[#222] px-2 py-1 text-[10px] text-[#aaa] hover:text-white"
+                          title="Copy Code"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {isAiLoading && (
                 <div className="p-2 rounded-lg bg-[#262626] text-[11px] text-[#ffa116] flex items-center gap-1.5 animate-pulse">
-                  <Sparkles className="h-3.5 w-3.5 animate-spin" /> Thinking & analyzing...
+                  <Sparkles className="h-3.5 w-3.5 animate-spin" /> Thinking & generating code...
                 </div>
               )}
               <div ref={chatBottomRef} />
@@ -1111,8 +1472,10 @@ const Courses = () => {
             {/* Quick Prompt Suggestions */}
             <div className="flex flex-wrap gap-1">
               {[
+                'Navbar CSS',
                 'Explain simply',
                 'Interview questions',
+                'Two Sum Code',
                 'Common edge cases',
               ].map((suggestion) => (
                 <button
