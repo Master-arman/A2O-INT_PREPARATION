@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Bot, User, Sparkles, Terminal, BookOpen, Lightbulb } from 'lucide-react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,30 +29,43 @@ const Chatbot = () => {
   const generateAiReply = (userQuery) => {
     const q = userQuery.toLowerCase();
 
-    if (q.includes('tree') || q.includes('binary tree') || q.includes('bst')) {
-      return `**Binary Trees & BSTs:**\n\n• A Binary Tree is a hierarchical data structure where each node has at most two children (left and right).\n• In a **Binary Search Tree (BST)**, the left subtree contains keys smaller than the node, and the right subtree contains keys greater.\n\n**Time Complexity:**\n- Search/Insert/Delete: Average $O(\\log n)$, Worst-case $O(n)$ if unbalanced (solved by AVL/Red-Black trees).\n\n*Would you like an example of Inorder Traversal or Tree Inversion?*`;
+    // 1. IMAGE / IMG / SRC
+    if (q.includes('img') || q.includes('image') || q.includes('src') || q.includes('photo')) {
+      return `**HTML Image (\`<img>\`) Code & Explanation:**\n\n\`\`\`html\n<img \n  src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=600&auto=format&fit=crop" \n  alt="Description of image" \n  width="400" \n  height="250" \n  loading="lazy"\n  style="border-radius: 12px; object-fit: cover;"\n/>\n\`\`\`\n\n**Key Attributes:**\n• \`src\`: The path or URL of the image.\n• \`alt\`: Screen reader & SEO fallback text.\n• \`loading="lazy"\`: Defers offscreen image loading for peak performance.`;
     }
 
+    // 2. NAVBAR / HEADER
+    if (q.includes('nav') || q.includes('navbar') || q.includes('header')) {
+      return `**Modern Responsive Flexbox Navbar:**\n\n\`\`\`html\n<nav style="display: flex; justify-content: space-between; align-items: center; background: #1e1e1e; padding: 14px 24px; border-radius: 10px; color: #fff;">\n  <a href="#" style="color: #ffa116; font-weight: bold; font-size: 1.2rem; text-decoration: none;">⚡ TechPrep</a>\n  <div style="display: flex; gap: 16px;">\n    <a href="#" style="color: #ccc; text-decoration: none;">Courses</a>\n    <a href="#" style="color: #ccc; text-decoration: none;">Practice</a>\n    <a href="#" style="color: #ccc; text-decoration: none;">Interviews</a>\n  </div>\n  <button style="background: #ffa116; color: #000; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">Get Started</button>\n</nav>\n\`\`\``;
+    }
+
+    // 3. TREE / BST
+    if (q.includes('tree') || q.includes('binary tree') || q.includes('bst')) {
+      return `**Binary Trees & BSTs:**\n\n• A Binary Tree is a hierarchical data structure where each node has at most two children (left and right).\n• In a **Binary Search Tree (BST)**, the left subtree contains keys smaller than the node, and the right subtree contains keys greater.\n\n**Time Complexity:**\n- Search/Insert/Delete: Average $O(\\log n)$, Worst-case $O(n)$ if unbalanced.\n\n*Try practicing Tree problems in our Coding Editor!*`;
+    }
+
+    // 4. BIG O / TIME COMPLEXITY
     if (q.includes('time complexity') || q.includes('big o') || q.includes('space complexity')) {
       return `**Big-O Notation Quick Cheat Sheet:**\n\n• $O(1)$ - Constant Time (Hash map lookup, array index access)\n• $O(\\log n)$ - Logarithmic (Binary Search, balanced BST search)\n• $O(n)$ - Linear (Array iteration, linear search)\n• $O(n \\log n)$ - Linearithmic (MergeSort, QuickSort average)\n• $O(n^2)$ - Quadratic (Nested loops, BubbleSort)\n• $O(2^n)$ - Exponential (Recursive Fibonacci without memoization)\n\n**Rule of Thumb:** Aim for $O(n \\log n)$ or $O(n)$ in technical interview coding rounds!`;
     }
 
+    // 5. JAVASCRIPT / REACT
     if (q.includes('javascript') || q.includes('closure') || q.includes('promise') || q.includes('async')) {
       return `**JavaScript Core Concepts:**\n\n• **Closures:** A function that retains access to its lexical scope even when executed outside that scope.\n• **Promises & Async/Await:** Modern async pattern replacing callback hell. Microtasks run before the next event loop macro-task.\n• **Event Loop:** Call Stack -> Web APIs -> Microtask Queue (Promises) -> Task Queue (setTimeout) -> Render pipeline.`;
     }
 
     if (q.includes('react') || q.includes('hook') || q.includes('useeffect') || q.includes('state')) {
-      return `**React Key Principles:**\n\n• **useState:** Re-renders component when state changes via immutable setters.\n• **useEffect:** Synchronizes with external systems. Dependency array controls execution frequency.\n• **useMemo & useCallback:** Memoize expensive calculations and callback references to prevent unnecessary child re-renders.\n• **Virtual DOM:** Reconciles differences efficiently using the Fiber reconciliation algorithm.`;
+      return `**React Key Principles:**\n\n• **useState:** Re-renders component when state changes via immutable setters.\n• **useEffect:** Synchronizes with external systems. Dependency array controls execution frequency.\n• **useMemo & useCallback:** Memoize expensive calculations and callback references to prevent unnecessary child re-renders.`;
     }
 
     if (q.includes('mock interview') || q.includes('interview question') || q.includes('system design')) {
       return `**System Design & Mock Interview Strategy (STAR Method):**\n\n1. **Situation:** Context of project or scale challenge (e.g., 100k QPS).\n2. **Task:** What bottleneck or feature you had to solve.\n3. **Action:** Architecture choices (Load balancer, Redis cache, DB indexing, microservices).\n4. **Result:** Latency reduced by 40%, 99.99% uptime achieved.\n\n*Check out the "Mock Interviews" tab in the left sidebar to practice real-time timed voice/coding rounds!*`;
     }
 
-    return `**AI Tutor Analysis:**\n\nGreat question regarding "${userQuery}"!\n\nHere is a structured breakdown:\n1. **Core Concept:** Break complex problems into smaller subproblems (Divide & Conquer).\n2. **Best Practice:** Keep functions pure, handle null/undefined boundaries, and add test assertions.\n3. **Interview Tip:** Always state your time and space complexity before writing final code.\n\nFeel free to explore our **Courses & Tutorials** tab to test this in our live interactive playground!`;
+    return `**AI Tutor Analysis:**\n\nRegarding "${userQuery}":\n\n1. **Core Concept:** Break down the problem into smaller logical modules.\n2. **Best Practice:** Keep functions pure, handle boundary inputs (null/undefined/empty), and validate output results.\n3. **Tip:** You can test code snippets directly in our **Courses & Tutorials** interactive code playground!`;
   };
 
-  const handleSend = (textToSend) => {
+  const handleSend = async (textToSend) => {
     const query = typeof textToSend === 'string' ? textToSend : input;
     if (!query || !query.trim()) return;
 
@@ -59,11 +73,32 @@ const Chatbot = () => {
     setInput('');
     setIsTyping(true);
 
+    // Live Gemini API Attempt
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (apiKey && apiKey.startsWith('AIzaSy')) {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const res = await Promise.race([
+          model.generateContent(`You are an expert tech tutor and coding mentor. Answer this query with code if requested: "${query}"`),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500))
+        ]);
+        const text = res.response.text();
+        if (text) {
+          setMessages((prev) => [...prev, { id: Date.now() + 1, role: 'ai', text }]);
+          setIsTyping(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Chatbot Gemini fallback active:", e);
+    }
+
     setTimeout(() => {
       setIsTyping(false);
       const reply = generateAiReply(query);
       setMessages((prev) => [...prev, { id: Date.now() + 1, role: 'ai', text: reply }]);
-    }, 600);
+    }, 450);
   };
 
   return (
