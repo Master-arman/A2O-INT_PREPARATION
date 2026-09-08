@@ -1,16 +1,14 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #ffa116;
-  --color-primary-dark: #e08e12;
-  --color-secondary: #8b5cf6;
-  --color-secondary-dark: #7c3aed;
+  --color-primary: #00b8a3;
+  --color-primary-dark: #009e8c;
   --color-background-dark: #1a1a1a;
   --color-surface-dark: #282828;
-  --color-surface-hover: #3e3e3e;
-  --color-text-primary: #eff1f6;
-  --color-text-secondary: #9e9e9e;
-  --color-border: #424242;
+  --color-surface-hover: #383838;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #9ca3af;
+  --color-border: #333333;
 }
 
 @layer base {
@@ -45,11 +43,11 @@
 
 @layer components {
   .glass-panel {
-    @apply bg-surface-dark/80 backdrop-blur-md border border-border rounded-xl;
+    @apply bg-surface-dark border border-border rounded-xl;
   }
   
   .btn-primary {
-    @apply px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors font-medium cursor-pointer shadow-lg shadow-primary/20;
+    @apply px-4 py-2 bg-primary hover:bg-primary-dark text-[#1a1a1a] rounded-lg transition-colors font-medium cursor-pointer;
   }
   
   .btn-secondary {

@@ -1,122 +1,190 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Send, Bot, User } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User, Sparkles, Terminal, BookOpen, Lightbulb } from 'lucide-react';
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { id: 1, role: 'ai', text: 'Hi! I am your AI Tutor. Need help explaining a concept like Binary Trees or Time Complexity?' }
+    {
+      id: 1,
+      role: 'ai',
+      text: '👋 Hi! I am your AI Tech & Interview Coach. Ask me about algorithms, coding problems, language syntax (JS, Python, Java, HTML/CSS, SQL), or mock interview questions!',
+    },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
 
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-    const userMsg = input;
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: userMsg }]);
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom();
+    }
+  }, [messages, isTyping, isOpen]);
+
+  const generateAiReply = (userQuery) => {
+    const q = userQuery.toLowerCase();
+
+    if (q.includes('tree') || q.includes('binary tree') || q.includes('bst')) {
+      return `**Binary Trees & BSTs:**\n\n• A Binary Tree is a hierarchical data structure where each node has at most two children (left and right).\n• In a **Binary Search Tree (BST)**, the left subtree contains keys smaller than the node, and the right subtree contains keys greater.\n\n**Time Complexity:**\n- Search/Insert/Delete: Average $O(\\log n)$, Worst-case $O(n)$ if unbalanced (solved by AVL/Red-Black trees).\n\n*Would you like an example of Inorder Traversal or Tree Inversion?*`;
+    }
+
+    if (q.includes('time complexity') || q.includes('big o') || q.includes('space complexity')) {
+      return `**Big-O Notation Quick Cheat Sheet:**\n\n• $O(1)$ - Constant Time (Hash map lookup, array index access)\n• $O(\\log n)$ - Logarithmic (Binary Search, balanced BST search)\n• $O(n)$ - Linear (Array iteration, linear search)\n• $O(n \\log n)$ - Linearithmic (MergeSort, QuickSort average)\n• $O(n^2)$ - Quadratic (Nested loops, BubbleSort)\n• $O(2^n)$ - Exponential (Recursive Fibonacci without memoization)\n\n**Rule of Thumb:** Aim for $O(n \\log n)$ or $O(n)$ in technical interview coding rounds!`;
+    }
+
+    if (q.includes('javascript') || q.includes('closure') || q.includes('promise') || q.includes('async')) {
+      return `**JavaScript Core Concepts:**\n\n• **Closures:** A function that retains access to its lexical scope even when executed outside that scope.\n• **Promises & Async/Await:** Modern async pattern replacing callback hell. Microtasks run before the next event loop macro-task.\n• **Event Loop:** Call Stack -> Web APIs -> Microtask Queue (Promises) -> Task Queue (setTimeout) -> Render pipeline.`;
+    }
+
+    if (q.includes('react') || q.includes('hook') || q.includes('useeffect') || q.includes('state')) {
+      return `**React Key Principles:**\n\n• **useState:** Re-renders component when state changes via immutable setters.\n• **useEffect:** Synchronizes with external systems. Dependency array controls execution frequency.\n• **useMemo & useCallback:** Memoize expensive calculations and callback references to prevent unnecessary child re-renders.\n• **Virtual DOM:** Reconciles differences efficiently using the Fiber reconciliation algorithm.`;
+    }
+
+    if (q.includes('mock interview') || q.includes('interview question') || q.includes('system design')) {
+      return `**System Design & Mock Interview Strategy (STAR Method):**\n\n1. **Situation:** Context of project or scale challenge (e.g., 100k QPS).\n2. **Task:** What bottleneck or feature you had to solve.\n3. **Action:** Architecture choices (Load balancer, Redis cache, DB indexing, microservices).\n4. **Result:** Latency reduced by 40%, 99.99% uptime achieved.\n\n*Check out the "Mock Interviews" tab in the left sidebar to practice real-time timed voice/coding rounds!*`;
+    }
+
+    return `**AI Tutor Analysis:**\n\nGreat question regarding "${userQuery}"!\n\nHere is a structured breakdown:\n1. **Core Concept:** Break complex problems into smaller subproblems (Divide & Conquer).\n2. **Best Practice:** Keep functions pure, handle null/undefined boundaries, and add test assertions.\n3. **Interview Tip:** Always state your time and space complexity before writing final code.\n\nFeel free to explore our **Courses & Tutorials** tab to test this in our live interactive playground!`;
+  };
+
+  const handleSend = (textToSend) => {
+    const query = typeof textToSend === 'string' ? textToSend : input;
+    if (!query || !query.trim()) return;
+
+    setMessages((prev) => [...prev, { id: Date.now(), role: 'user', text: query }]);
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI Teaching
     setTimeout(() => {
       setIsTyping(false);
-      setMessages(prev => [...prev, { 
-        id: Date.now() + 1, 
-        role: 'ai', 
-        text: `That's a great question about "${userMsg}". \n\nThink of it like a family tree where each person can have at most two children. In computer science, this helps us organize data so we can search through it very quickly (O(log n) time).\n\nWould you like me to show you a quick code example?` 
-      }]);
-    }, 2000);
+      const reply = generateAiReply(query);
+      setMessages((prev) => [...prev, { id: Date.now() + 1, role: 'ai', text: reply }]);
+    }, 600);
   };
 
   return (
     <>
       {/* Floating Action Button */}
-      <motion.button 
+      <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full shadow-2xl shadow-blue-500/30 flex items-center justify-center z-50 group hover:shadow-blue-500/50 transition-all border border-white/20"
+        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#ffa116] text-black shadow-[0_0_20px_rgba(255,161,22,0.4)] transition-all hover:bg-[#e08e13] border border-[#383838]"
+        title="Open AI Tutor & Interview Assistant"
       >
-        <MessageSquare className="w-7 h-7 group-hover:rotate-12 transition-transform" />
+        <MessageSquare className="h-5 w-5" />
       </motion.button>
 
       {/* Chat Window */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 right-4 left-4 md:left-auto md:right-6 md:w-[400px] h-[60vh] md:h-[550px] max-h-[80vh] glass-panel bg-surface-dark/95 shadow-2xl border border-white/10 z-50 flex flex-col overflow-hidden rounded-2xl"
+            className="fixed bottom-24 right-4 left-4 z-50 flex h-[60vh] max-h-[600px] flex-col overflow-hidden rounded-2xl border border-[#383838] bg-[#1e1e1e] shadow-2xl md:left-auto md:right-6 md:h-[550px] md:w-[420px]"
           >
             {/* Header */}
-            <div className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 flex justify-between items-center text-white shrink-0">
+            <div className="flex shrink-0 items-center justify-between border-b border-[#383838] bg-[#262626] p-4 text-white">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <Bot className="w-6 h-6" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ffa116]/15 text-[#ffa116]">
+                  <Bot className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold">AI Tutor</h3>
-                  <p className="text-xs text-blue-100 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-green-400"></span> Online
+                  <h3 className="font-bold text-sm text-white">AI Learning Coach</h3>
+                  <p className="flex items-center gap-1.5 text-xs text-[#8a8a8a]">
+                    <span className="h-2 w-2 rounded-full bg-[#00b8a3] animate-pulse" /> Live & Ready
                   </p>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                <X className="w-5 h-5" />
+              <button
+                onClick={() => setIsOpen(false)}
+                className="rounded-full p-2 text-[#8a8a8a] transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">
               {messages.map((msg) => (
-                <div key={msg.id} className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                    msg.role === 'user' ? 'bg-blue-500' : 'bg-purple-500'
-                  }`}>
-                    {msg.role === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
+                <div
+                  key={msg.id}
+                  className={`flex gap-2.5 max-w-[88%] ${
+                    msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''
+                  }`}
+                >
+                  <div
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                      msg.role === 'user' ? 'bg-[#ffa116] text-black font-bold' : 'bg-[#333] text-[#ffa116]'
+                    }`}
+                  >
+                    {msg.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
                   </div>
-                  <div className={`p-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                    msg.role === 'user' 
-                      ? 'bg-blue-600 text-white rounded-tr-sm' 
-                      : 'bg-white/10 text-gray-200 rounded-tl-sm border border-white/5'
-                  }`}>
+                  <div
+                    className={`rounded-2xl p-3 leading-relaxed whitespace-pre-line shadow-md ${
+                      msg.role === 'user'
+                        ? 'bg-[#ffa116] font-semibold text-black rounded-tr-none'
+                        : 'bg-[#282828] text-neutral-200 border border-[#383838] rounded-tl-none'
+                    }`}
+                  >
                     {msg.text}
                   </div>
                 </div>
               ))}
-              
+
               {isTyping && (
-                <div className="flex gap-3 max-w-[85%]">
-                  <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center shrink-0">
-                    <Bot className="w-4 h-4 text-white" />
+                <div className="flex gap-2.5 max-w-[85%]">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#333] text-[#ffa116]">
+                    <Bot className="h-3.5 w-3.5" />
                   </div>
-                  <div className="p-4 rounded-2xl bg-white/10 rounded-tl-sm flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="flex items-center gap-1 rounded-2xl rounded-tl-none border border-[#383838] bg-[#282828] p-3 text-[#ffa116]">
+                    <Sparkles className="h-3.5 w-3.5 animate-spin mr-1" />
+                    <span>Thinking...</span>
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Quick Chips */}
+            <div className="flex flex-wrap gap-1 px-3 py-1.5 bg-[#222] border-t border-[#333]">
+              {['Big-O Complexities', 'React Hooks', 'Binary Trees', 'Interview STAR Method'].map((chip) => (
+                <button
+                  key={chip}
+                  onClick={() => handleSend(chip)}
+                  className="rounded-full border border-[#383838] bg-[#1a1a1a] px-2 py-0.5 text-[10px] text-[#8a8a8a] hover:border-[#ffa116] hover:text-white transition-colors"
+                >
+                  {chip}
+                </button>
+              ))}
             </div>
 
             {/* Input Area */}
-            <form onSubmit={handleSend} className="p-4 bg-gray-900/50 border-t border-white/10 shrink-0 flex gap-2">
-              <input 
-                type="text" 
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSend(input);
+              }}
+              className="flex shrink-0 gap-2 border-t border-[#383838] bg-[#1a1a1a] p-3"
+            >
+              <input
+                type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask me to explain anything..."
-                className="flex-1 bg-white/5 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                placeholder="Ask AI anything about coding or interviews..."
+                className="flex-1 rounded-lg border border-[#383838] bg-[#242424] px-3 py-2 text-xs text-white placeholder:text-[#666] focus:border-[#ffa116] focus:outline-none"
               />
-              <button 
+              <button
                 type="submit"
                 disabled={!input.trim()}
-                className="p-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="rounded-lg bg-[#ffa116] px-3.5 py-2 font-bold text-black transition-colors hover:bg-[#e08e13] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Send className="w-5 h-5" />
+                <Send className="h-4 w-4" />
               </button>
             </form>
           </motion.div>

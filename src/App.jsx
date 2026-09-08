@@ -12,6 +12,7 @@ import CodingEditor from './pages/CodingEditor/CodingEditor';
 import Analytics from './pages/Analytics/Analytics';
 import CompanyPrep from './pages/CompanyPrep/CompanyPrep';
 import InterviewFeedback from './pages/InterviewFeedback/InterviewFeedback';
+import Courses from './pages/Courses/Courses';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="resume" element={<ResumeUpload />} />
           <Route path="interviews" element={<Interviews />} />
+          <Route path="courses" element={<Courses />} />
           <Route path="leaderboard" element={<Leaderboard />} />
           <Route path="voice-interview" element={<VoiceInterview />} />
           <Route path="coding" element={<CodingEditor />} />

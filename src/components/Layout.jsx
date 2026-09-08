@@ -1,12 +1,30 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, User, FileUp, Code, Briefcase, Trophy, Mic, Building2, BarChart2, LogOut, Menu, X } from 'lucide-react';
-import { motion } from 'framer-motion';
+import {
+  LayoutDashboard,
+  BookOpen,
+  GraduationCap,
+  User,
+  FileUp,
+  Code,
+  Briefcase,
+  Trophy,
+  Mic,
+  Building2,
+  BarChart2,
+  LogOut,
+  Menu,
+  X,
+  Search,
+  Bell,
+} from 'lucide-react';
 import Chatbot from './Chatbot';
 
 const Layout = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -21,6 +39,7 @@ const Layout = () => {
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'Courses & Tutorials', path: '/courses', icon: BookOpen },
     { name: 'Interviews', path: '/interviews', icon: Briefcase },
     { name: 'Coding Env', path: '/coding', icon: Code },
     { name: 'Company Prep', path: '/company', icon: Building2 },
@@ -39,105 +58,60 @@ const Layout = () => {
     localStorage.removeItem('user');
   };
 
+  const searchResults = navItems.filter((item) => item.name.toLowerCase().includes(searchTerm.trim().toLowerCase())).slice(0, 5);
+
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-[#0f172a] text-white font-sans overflow-hidden">
+    <div className="w-full max-w-full min-h-screen overflow-x-hidden bg-[#1a1a1a] text-neutral-200 font-sans">
       <Chatbot />
       
-      {/* Mobile Top Header */}
-      <div className="md:hidden flex items-center justify-between p-4 glass-panel border-b border-white/10 z-50">
+      {/* Top Navigation */}
+      <header className="w-full sticky top-0 flex items-center justify-between px-6 py-3 bg-[#262626] border-b border-[#333333] z-50">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-sm shadow-lg shadow-blue-500/30">
-            AI
+          <div className="w-8 h-8 rounded-lg bg-[#ffa116] text-[#1a1a1a] flex items-center justify-center font-black text-xs">
+            TP
           </div>
-          <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-            TechPrep
-          </h1>
-        </div>
-        <button 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
-          className="p-2 bg-white/5 border border-white/10 rounded-lg text-white hover:bg-white/10 transition-colors"
-        >
-          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      <aside className={`
-        fixed md:relative inset-y-0 left-0 w-64 glass-panel border-r border-[#1e293b]/50 m-4 rounded-2xl shadow-2xl z-50 transition-transform duration-300 ease-in-out
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-[150%] md:translate-x-0'}
-      `}>
-        <div className="p-6 h-full flex flex-col overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}>
-          <div className="flex items-center gap-3 mb-8 shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-lg shadow-lg shadow-blue-500/30">
-              AI
-            </div>
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-              TechPrep
-            </h1>
-          </div>
-          
-          <nav className="space-y-1 flex-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 relative group ${
-                    isActive 
-                      ? 'text-white bg-white/10 shadow-inner' 
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {isActive && (
-                    <motion.div 
-                      layoutId="activeTab"
-                      className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl border border-white/10"
-                      initial={false}
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                  <Icon className="w-5 h-5 relative z-10" />
-                  <span className="font-medium relative z-10">{item.name}</span>
-                </Link>
-              );
-            })}
+          <h1 className="text-lg font-bold tracking-tight text-white">TechPrep</h1>
+          <nav className="hidden lg:flex items-center gap-1 ml-7">
+            {[
+              ['Practice', '/'],
+              ['Courses', '/courses'],
+              ['Mock Interview', '/interviews'],
+              ['Coding Env', '/coding'],
+              ['Voice AI', '/voice-interview'],
+              ['Resume AI', '/resume'],
+            ].map(([name, path]) => (
+              <Link key={name} to={path} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${location.pathname === path ? 'text-white bg-[#333333]' : 'text-[#9ca3af] hover:text-white hover:bg-[#303030]'}`}>
+                {name}
+              </Link>
+            ))}
           </nav>
-
-          <div className="mt-8 pt-4 border-t border-white/10 shrink-0">
-            <Link to="/auth" onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-red-500/10 hover:text-red-400 transition-all">
-              <LogOut className="w-5 h-5" />
-              <span className="font-medium">Logout</span>
-            </Link>
-          </div>
         </div>
-      </aside>
+        <div className="flex items-center gap-3">
+          <div className="relative hidden sm:block">
+            <label className="flex items-center gap-2 bg-[#383838] rounded-full px-3 py-1.5 w-48 text-[#9ca3af] text-sm focus-within:ring-1 focus-within:ring-[#00b8a3]">
+              <Search className="w-4 h-4 shrink-0" />
+              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search" aria-label="Search pages" className="w-full bg-transparent text-white placeholder:text-[#9ca3af] outline-none" />
+            </label>
+            {searchTerm.trim() && <div className="absolute top-11 right-0 w-56 overflow-hidden rounded-lg border border-[#383838] bg-[#262626] shadow-xl">
+              {searchResults.length > 0 ? searchResults.map((item) => <Link key={item.path} to={item.path} onClick={() => setSearchTerm('')} className="block px-3 py-2 text-sm text-[#d1d1d1] hover:bg-[#333333] hover:text-white">{item.name}</Link>) : <p className="px-3 py-2 text-xs text-[#8a8a8a]">No matching pages</p>}
+            </div>}
+          </div>
+          <div className="relative">
+            <button onClick={() => setIsNotificationsOpen((open) => !open)} aria-label="Open notifications" className="relative p-1 text-[#9ca3af] hover:text-white"><Bell className="w-5 h-5" /><span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-[#00b8a3]" /></button>
+            {isNotificationsOpen && <div className="absolute right-0 top-10 w-64 rounded-lg border border-[#383838] bg-[#262626] p-3 shadow-xl"><p className="text-sm font-semibold text-white">Notifications</p><p className="mt-2 text-xs text-[#8a8a8a]">You are all caught up.</p></div>}
+          </div>
+          <div className="w-8 h-8 rounded-full bg-[#383838] text-white flex items-center justify-center text-xs font-bold">{(JSON.parse(authUserStr || '{"name":"U"}').name || 'U').charAt(0).toUpperCase()}</div>
+          <Link to="/profile" className="hidden sm:block px-3 py-1 rounded-full bg-[#00b8a3] text-black text-xs font-semibold">Profile</Link>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="lg:hidden p-2 text-white">{isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}</button>
+        </div>
+      </header>
+
+      {isMobileMenuOpen && <div className="lg:hidden absolute top-16 inset-x-0 z-40 bg-[#262626] border-b border-[#333333] p-3 grid grid-cols-2 gap-1">{navItems.map((item) => <Link key={item.name} to={item.path} onClick={() => setIsMobileMenuOpen(false)} className="px-3 py-2 text-sm text-[#9ca3af] hover:text-white hover:bg-[#303030] rounded-lg">{item.name}</Link>)}</div>}
 
       {/* Main Content */}
-      <main className="flex-1 h-full overflow-y-auto p-4 md:p-8">
-        <div className="max-w-7xl mx-auto h-full relative">
-          {/* Subtle background glow */}
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
-          
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            <Outlet />
-          </motion.div>
+      <main className="w-full min-w-0 bg-[#1a1a1a]">
+        <div className="w-full min-w-0">
+          <Outlet />
         </div>
       </main>
     </div>

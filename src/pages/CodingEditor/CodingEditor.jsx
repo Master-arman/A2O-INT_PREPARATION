@@ -113,69 +113,6 @@ const CodingEditor = () => {
     setResults(null);
   };
 
-  const [isPrefetching, setIsPrefetching] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    const prefetch = async () => {
-      if (questionsList.length > currentQIndex + 1 || isPrefetching) return;
-      
-      setIsPrefetching(true);
-      try {
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        if (!apiKey) return;
-        
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-        
-        const history = JSON.parse(localStorage.getItem('askedQuestions') || '[]');
-        const historyText = history.length > 0 ? history.join(', ') : 'None';
-        
-        const prompt = `You are an expert technical interviewer. Generate a new, unique algorithmic coding interview question.
-        It MUST NOT be any of the following previously asked questions (by title/topic): ${historyText}.
-        
-        Return ONLY a raw JSON object (without markdown code blocks like \`\`\`json) with the exact following structure:
-        {
-          "id": "A unique ID string (e.g. Q7, Q8)",
-          "title": "Question Title",
-          "difficulty": "Easy, Medium, or Hard",
-          "topic": "The main topic (e.g., Two Pointers, Dynamic Programming)",
-          "description": "Full problem description",
-          "exampleInput": "Example input",
-          "exampleOutput": "Example output",
-          "explanation": "Brief explanation of the example",
-          "hint": "A helpful hint for the user",
-          "boilerplates": {
-            "javascript": "function solve() {\\n  // Write your code here\\n}",
-            "python": "class Solution:\\n    def solve(self):\\n        # Write your code here\\n        pass",
-            "java": "class Solution {\\n    public void solve() {\\n        // Write your code here\\n    }\\n}",
-            "cpp": "class Solution {\\npublic:\\n    void solve() {\\n        // Write your code here\\n    }\\n}"
-          }
-        }`;
-
-        const result = await model.generateContent(prompt);
-        let text = result.response.text().trim();
-        text = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
-        
-        const newQuestion = JSON.parse(text);
-        
-        history.push(newQuestion.title);
-        localStorage.setItem('askedQuestions', JSON.stringify(history));
-        
-        if (mounted) {
-          setQuestionsList(prev => [...prev, newQuestion]);
-        }
-      } catch (error) {
-        console.error("Prefetch error:", error);
-      } finally {
-        if (mounted) setIsPrefetching(false);
-      }
-    };
-
-    prefetch();
-    return () => { mounted = false; };
-  }, [currentQIndex, questionsList.length, isPrefetching]);
-
   const handleNextQuestion = async () => {
     // Check if we already have the next question pre-fetched
     if (currentQIndex + 1 < questionsList.length) {
@@ -225,7 +162,10 @@ const CodingEditor = () => {
         }
       }`;
 
-      const result = await model.generateContent(prompt);
+      const result = await Promise.race([
+        model.generateContent(prompt),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('AI request timed out')), 700))
+      ]);
       let text = result.response.text().trim();
       text = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
       
