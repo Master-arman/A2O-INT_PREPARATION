@@ -33,8 +33,12 @@ const Layout = () => {
 
   const authUserStr = localStorage.getItem('user');
   let isAdmin = false;
-  if (authUserStr) {
-    isAdmin = JSON.parse(authUserStr).role === 'admin';
+  let parsedUser = { name: 'U', role: '' };
+  try {
+    if (authUserStr) parsedUser = JSON.parse(authUserStr);
+    isAdmin = parsedUser.role === 'admin';
+  } catch {
+    // Corrupted localStorage - ignore
   }
 
   const navItems = [
@@ -100,7 +104,7 @@ const Layout = () => {
             <button onClick={() => setIsNotificationsOpen((open) => !open)} aria-label="Open notifications" className="relative p-1 text-[#9ca3af] hover:text-white"><Bell className="w-5 h-5" /><span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-[#00b8a3]" /></button>
             {isNotificationsOpen && <div className="absolute right-0 top-10 w-64 rounded-lg border border-[#383838] bg-[#262626] p-3 shadow-xl"><p className="text-sm font-semibold text-white">Notifications</p><p className="mt-2 text-xs text-[#8a8a8a]">You are all caught up.</p></div>}
           </div>
-          <div className="w-8 h-8 rounded-full bg-[#383838] text-white flex items-center justify-center text-xs font-bold">{(JSON.parse(authUserStr || '{"name":"U"}').name || 'U').charAt(0).toUpperCase()}</div>
+          <div className="w-8 h-8 rounded-full bg-[#383838] text-white flex items-center justify-center text-xs font-bold">{(parsedUser.name || 'U').charAt(0).toUpperCase()}</div>
           <Link to="/profile" className="hidden sm:block px-3 py-1 rounded-full bg-[#00b8a3] text-black text-xs font-semibold">Profile</Link>
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="lg:hidden p-2 text-white">{isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}</button>
         </div>

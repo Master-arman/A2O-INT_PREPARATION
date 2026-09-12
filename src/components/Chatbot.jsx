@@ -76,12 +76,12 @@ const Chatbot = () => {
     // Live Gemini API Attempt
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (apiKey && apiKey.startsWith('AIzaSy')) {
+      if (apiKey && apiKey.length > 20) {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
         const res = await Promise.race([
-          model.generateContent(`You are an expert tech tutor and coding mentor. Answer this query with code if requested: "${query}"`),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500))
+          model.generateContent(`You are an expert tech tutor and coding mentor specializing in interview preparation. Answer this query helpfully and concisely, with code examples if relevant: "${query}"`),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
         ]);
         const text = res.response.text();
         if (text) {
@@ -91,7 +91,7 @@ const Chatbot = () => {
         }
       }
     } catch (e) {
-      console.warn("Chatbot Gemini fallback active:", e);
+      console.warn("Chatbot Gemini fallback active:", e.message);
     }
 
     setTimeout(() => {

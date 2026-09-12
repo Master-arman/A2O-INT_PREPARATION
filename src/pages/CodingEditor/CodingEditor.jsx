@@ -135,7 +135,7 @@ const CodingEditor = () => {
       }
       
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
       
       const history = JSON.parse(localStorage.getItem('askedQuestions') || '[]');
       const historyText = history.length > 0 ? history.join(', ') : 'None';
@@ -164,7 +164,7 @@ const CodingEditor = () => {
 
       const result = await Promise.race([
         model.generateContent(prompt),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('AI request timed out')), 700))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('AI request timed out')), 12000))
       ]);
       let text = result.response.text().trim();
       text = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
