@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, MicOff, Volume2, Square, Play, RefreshCw, Activity, Sparkles, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Volume2, Square, Play, RefreshCw, Activity, Sparkles, Loader2, Award, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const AI_QUESTIONS = [
@@ -13,6 +14,7 @@ const AI_QUESTIONS = [
 ];
 
 const VoiceInterview = () => {
+  const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
@@ -158,11 +160,34 @@ Give a very concise follow-up response (1-2 sentences maximum). Either briefly a
     }
   };
 
+  const handleFinishInterview = () => {
+    if (recognitionRef.current) recognitionRef.current.stop();
+    window.speechSynthesis.cancel();
+    sessionStorage.setItem('lastInterviewTranscript', JSON.stringify(conversation));
+    sessionStorage.setItem('lastInterviewSource', 'AI Voice Behavioral Mock');
+    navigate('/feedback', { state: { source: 'Voice Behavioral Mock Interview' } });
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-8 h-full flex flex-col">
-      <header>
-        <h1 className="text-3xl font-bold text-white mb-2">Voice Mock Interview</h1>
-        <p className="text-gray-400">Practice behavioral questions with real-time speech-to-text and AI voice synthesis.</p>
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Voice Mock Interview</h1>
+          <p className="text-gray-400">Practice behavioral questions with real-time speech-to-text and AI voice synthesis.</p>
+        </div>
+
+        {conversation.length > 1 && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={handleFinishInterview}
+            className="py-2.5 px-5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 text-sm active:scale-95 transition-all"
+          >
+            <Award className="w-4 h-4" />
+            End & Generate AI Feedback
+            <ArrowRight className="w-4 h-4" />
+          </motion.button>
+        )}
       </header>
 
       <div className="flex-1 grid lg:grid-cols-3 gap-8 min-h-[500px]">

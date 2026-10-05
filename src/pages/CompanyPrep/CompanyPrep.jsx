@@ -20,7 +20,7 @@ const CompanyPrep = () => {
     <div className="max-w-6xl mx-auto space-y-8 pb-8">
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Company-Specific Preparation</h1>
-        <p className="text-gray-400">Tailor your interview practice to specific company patterns and formats (Phase 7).</p>
+        <p className="text-gray-400">Tailor your interview practice to specific company patterns, FAANG rubrics, and formats.</p>
       </header>
 
       {/* Search & Filters */}
@@ -76,7 +76,7 @@ const CompanyPrep = () => {
         <div className="glass-panel p-8 border-t-2 border-purple-500">
           <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
             <Users className="w-6 h-6 text-purple-400" />
-            Behavioral Mock (Phase 5)
+            Behavioral Mock Interview
           </h2>
           <p className="text-gray-400 mb-6">
             Practice answering leadership principles and STAR method questions. AI evaluates your communication, confidence, and storytelling.
@@ -92,7 +92,7 @@ const CompanyPrep = () => {
         <div className="glass-panel p-8 border-t-2 border-orange-500">
           <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
             <BookOpen className="w-6 h-6 text-orange-400" />
-            Resume-Based (Phase 6)
+            Resume-Based AI Drill
           </h2>
           <p className="text-gray-400 mb-6">
             AI scans your resume projects (e.g., Chat app, E-commerce) and asks deep-dive architecture and design questions.
