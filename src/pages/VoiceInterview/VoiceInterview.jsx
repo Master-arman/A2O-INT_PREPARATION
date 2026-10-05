@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, MicOff, Volume2, Square, Play, RefreshCw, Activity } from 'lucide-react';
+import { Mic, MicOff, Volume2, Square, Play, RefreshCw, Activity, Sparkles, Loader2 } from 'lucide-react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const AI_QUESTIONS = [
   "That's interesting. Can you tell me more about the specific technologies you used?",
@@ -14,6 +15,7 @@ const AI_QUESTIONS = [
 const VoiceInterview = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(false);
   const [interimText, setInterimText] = useState('');
   const [currentSpeech, setCurrentSpeech] = useState('');
   const [conversation, setConversation] = useState([
@@ -25,11 +27,10 @@ const VoiceInterview = () => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      // Voice customization (optional)
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) utterance.voice = voices.find(v => v.name.includes('Google UK English Female') || v.name.includes('Female')) || voices[0];
       
-      utterance.rate = 0.9;
+      utterance.rate = 0.95;
       utterance.onstart = () => setIsAiSpeaking(true);
       utterance.onend = () => setIsAiSpeaking(false);
       window.speechSynthesis.speak(utterance);
@@ -59,7 +60,6 @@ const VoiceInterview = () => {
       recognitionRef.current = rec;
     }
 
-    // Greet user on mount
     setTimeout(() => {
       speakText('Hello! I am your AI Interviewer. Are you ready to begin the behavioral interview?');
     }, 1000);
@@ -70,25 +70,63 @@ const VoiceInterview = () => {
     };
   }, []);
 
-  const toggleRecording = () => {
+  const generateAiInterviewerReply = async (userAnswer, chatHistory) => {
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (apiKey && apiKey.length > 20) {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const modelCandidates = ["gemini-3.6-flash", "gemini-flash-latest"];
+        
+        const historyPrompt = chatHistory.slice(-4).map(m => `${m.role === 'ai' ? 'Interviewer' : 'Candidate'}: ${m.text}`).join('\n');
+        const prompt = `You are an elite, realistic FAANG behavioral interviewer.
+Conversation so far:
+${historyPrompt}
+Candidate just answered: "${userAnswer}"
+
+Your task:
+Give a very concise follow-up response (1-2 sentences maximum). Either briefly acknowledge a detail they mentioned, or ask a sharp behavioral/technical follow-up question (STAR method style). Keep it natural and ready for text-to-speech. Do not include markdown or quotes.`;
+
+        for (const mName of modelCandidates) {
+          try {
+            const model = genAI.getGenerativeModel({ model: mName });
+            const result = await Promise.race([
+              model.generateContent(prompt),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 7000))
+            ]);
+            const text = result.response.text().trim();
+            if (text) return text;
+          } catch {
+            continue;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Gemini voice interview fallback:", e.message);
+    }
+    return AI_QUESTIONS[Math.floor(Math.random() * AI_QUESTIONS.length)];
+  };
+
+  const toggleRecording = async () => {
     if (isRecording) {
       setIsRecording(false);
       if (recognitionRef.current) recognitionRef.current.stop();
       
       const finalUserText = (currentSpeech + ' ' + interimText).trim();
       if (finalUserText) {
-        setConversation(prev => [...prev, { role: 'user', text: finalUserText }]);
-      }
-      setCurrentSpeech('');
-      setInterimText('');
-      
-      // Simulate processing time then AI responds
-      setTimeout(() => {
-        const nextQ = AI_QUESTIONS[Math.floor(Math.random() * AI_QUESTIONS.length)];
-        setConversation(prev => [...prev, { role: 'ai', text: nextQ }]);
-        speakText(nextQ);
-      }, 1500);
+        const updatedHistory = [...conversation, { role: 'user', text: finalUserText }];
+        setConversation(updatedHistory);
+        setCurrentSpeech('');
+        setInterimText('');
+        setIsAiThinking(true);
 
+        const aiReply = await generateAiInterviewerReply(finalUserText, updatedHistory);
+        setIsAiThinking(false);
+        setConversation(prev => [...prev, { role: 'ai', text: aiReply }]);
+        speakText(aiReply);
+      } else {
+        setCurrentSpeech('');
+        setInterimText('');
+      }
     } else {
       setIsRecording(true);
       window.speechSynthesis.cancel();
@@ -148,8 +186,8 @@ const VoiceInterview = () => {
               </div>
             </div>
             <h2 className="text-2xl font-bold text-white">AI Interviewer</h2>
-            <p className="text-gray-400 mt-2">
-              {isAiSpeaking ? 'Speaking...' : isRecording ? 'Listening...' : 'Ready'}
+            <p className="text-gray-400 mt-2 text-sm flex items-center justify-center gap-1.5">
+              {isAiSpeaking ? 'Speaking...' : isAiThinking ? 'AI Analyzing Response...' : isRecording ? 'Listening to Candidate...' : 'Ready'}
             </p>
           </div>
 

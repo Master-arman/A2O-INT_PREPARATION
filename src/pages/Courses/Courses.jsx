@@ -1391,9 +1391,11 @@ logSearch("React"); // Only this final call executes after 200ms!`;
     // 1. Try Live Gemini API first if configured
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (apiKey && apiKey.startsWith('AIzaSy')) {
+      if (apiKey && apiKey.length > 20) {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const modelCandidates = ["gemini-3.6-flash", "gemini-flash-latest"];
+        let response = null;
+
         const prompt = `You are an elite code generator and tech tutor.
 User question: "${questionText}".
 Language/Course context: "${COURSE_LANGUAGES.find(l => l.id === selectedLang)?.name || selectedLang}".
@@ -1409,12 +1411,20 @@ CODE_LANG: <html | css | javascript | python | java | cpp | sql>
 CODE:
 <executable code snippet>`;
 
-        const response = await Promise.race([
-          model.generateContent(prompt),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500))
-        ]);
+        for (const mName of modelCandidates) {
+          try {
+            const model = genAI.getGenerativeModel({ model: mName });
+            response = await Promise.race([
+              model.generateContent(prompt),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+            ]);
+            if (response) break;
+          } catch {
+            continue;
+          }
+        }
 
-        const text = response.response.text();
+        const text = response ? response.response.text() : '';
         if (text && text.includes('CODE:')) {
           const parts = text.split('CODE:');
           const explanationPart = parts[0].replace('EXPLANATION:', '').replace(/CODE_LANG:.*$/m, '').trim();

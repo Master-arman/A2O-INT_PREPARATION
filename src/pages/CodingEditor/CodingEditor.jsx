@@ -156,7 +156,7 @@ const CodingEditor = () => {
       }
       
       const genAI = new GoogleGenerativeAI(apiKey);
-      const modelCandidates = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.6-flash"];
+      const modelCandidates = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.8-flash"];
       
       const history = JSON.parse(localStorage.getItem('askedQuestions') || '[]');
       const historyText = history.length > 0 ? history.join(', ') : 'None';
@@ -304,7 +304,7 @@ const CodingEditor = () => {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelCandidates = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.6-flash"];
+    const modelCandidates = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.8-flash"];
 
     const prompt = `You are an automated, strict Online Judge and Code Compiler (like LeetCode or HackerRank).
 Evaluate the user's submitted code for this problem.
