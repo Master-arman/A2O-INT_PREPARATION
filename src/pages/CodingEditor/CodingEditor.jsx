@@ -23,6 +23,7 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { recordSolvedQuestion } from '../../utils/activityTracker';
 
 const FALLBACK_QUESTION = {
   id: 'FB1',
@@ -500,6 +501,10 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
       const acc = aiResult.overallPassed ? 100 : (aiResult.testsPassed > 0 ? 50 : 0);
       updateAnalytics(score, acc);
 
+      if (aiResult.overallPassed) {
+        recordSolvedQuestion(currentQ.id || currentQ.title);
+      }
+
       setResults({
         status: aiResult.status,
         overallPassed: aiResult.overallPassed,
@@ -519,6 +524,10 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
       const fallbackRes = fallbackEvaluation(code, currentQ, language);
       const score = fallbackRes.overallPassed ? 100 : Math.round((fallbackRes.testsPassed / fallbackRes.totalTests) * 80);
       updateAnalytics(score, fallbackRes.overallPassed ? 100 : 0);
+      
+      if (fallbackRes.overallPassed) {
+        recordSolvedQuestion(currentQ.id || currentQ.title);
+      }
       
       setResults({
         status: fallbackRes.status,

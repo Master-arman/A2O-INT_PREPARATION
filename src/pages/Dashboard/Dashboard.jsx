@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import MockInterviewModal from '../../components/MockInterviewModal';
+import ActivityHeatmap from '../../components/ActivityHeatmap';
+import { getSolvedQuestions, recordSolvedQuestion, unrecordSolvedQuestion } from '../../utils/activityTracker';
 
 const topics = ['All Topics', 'Algorithms', 'System Design', 'Frontend React', 'Behavioral', 'Databases'];
 const companies = ['Google', 'Amazon', 'Microsoft'];
@@ -280,7 +282,17 @@ const FeatureCard = ({ icon: Icon, title, subtitle }) => (
 
 const Dashboard = () => {
   const [userName, setUserName] = useState('User');
-  const [questions, setQuestions] = useState(MASTER_QUESTIONS);
+  const [questions, setQuestions] = useState(() => {
+    try {
+      const solvedSet = getSolvedQuestions();
+      return MASTER_QUESTIONS.map(q => ({
+        ...q,
+        solved: solvedSet.has(q.id)
+      }));
+    } catch {
+      return MASTER_QUESTIONS;
+    }
+  });
   const [activeTopic, setActiveTopic] = useState('All Topics');
   const [searchTerm, setSearchTerm] = useState('');
   const [difficulty, setDifficulty] = useState('All difficulties');
@@ -304,6 +316,17 @@ const Dashboard = () => {
       const authData = JSON.parse(authUserStr);
       setUserName(authData.name ? authData.name.split(' ')[0] : 'User');
     }
+
+    const handleSolvedUpdate = () => {
+      const solvedSet = getSolvedQuestions();
+      setQuestions((prev) => prev.map(q => ({
+        ...q,
+        solved: solvedSet.has(q.id)
+      })));
+    };
+
+    window.addEventListener('solved-questions-updated', handleSolvedUpdate);
+    return () => window.removeEventListener('solved-questions-updated', handleSolvedUpdate);
   }, []);
 
   const toggleBookmark = (questionId) => {
@@ -348,9 +371,19 @@ const Dashboard = () => {
   const solvedCount = questions.filter((question) => question.solved).length;
 
   const toggleSolved = (questionId) => {
-    setQuestions((currentQuestions) => currentQuestions.map((question) => (
-      question.id === questionId ? { ...question, solved: !question.solved } : question
-    )));
+    setQuestions((currentQuestions) => {
+      const target = currentQuestions.find(q => q.id === questionId);
+      if (target) {
+        if (!target.solved) {
+          recordSolvedQuestion(questionId);
+        } else {
+          unrecordSolvedQuestion(questionId);
+        }
+      }
+      return currentQuestions.map((question) => (
+        question.id === questionId ? { ...question, solved: !question.solved } : question
+      ));
+    });
   };
 
   const generateQuestion = () => {
@@ -785,30 +818,7 @@ const Dashboard = () => {
 
         {/* Right Sidebar */}
         <aside className="col-span-12 space-y-6 lg:col-span-3">
-          <div className="rounded-xl border border-[#383838] bg-[#282828] p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Activity</h2>
-              <CalendarDays className="h-4 w-4 text-[#8a8a8a]" />
-            </div>
-            <p className="mt-1 text-xs text-[#8a8a8a]">September 2026</p>
-            <div className="mt-4 grid grid-cols-7 gap-1.5">
-              {Array.from({ length: 35 }, (_, index) => (
-                <span
-                  key={index}
-                  className={`aspect-square rounded-sm ${
-                    [2, 3, 7, 12, 13, 18, 24, 25, 31].includes(index)
-                      ? 'bg-[#ffa116]'
-                      : index % 4 === 0
-                      ? 'bg-[#533f20]'
-                      : 'bg-[#383838]'
-                  }`}
-                />
-              ))}
-            </div>
-            <div className="mt-4 flex items-center gap-2 text-xs text-[#8a8a8a]">
-              <Flame className="h-3.5 w-3.5 text-[#ffa116]" /> 0 day streak
-            </div>
-          </div>
+          <ActivityHeatmap />
 
           <div className="rounded-xl border border-[#383838] bg-[#282828] p-4">
             <h2 className="text-sm font-semibold">Target Role</h2>
