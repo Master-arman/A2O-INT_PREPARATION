@@ -30,7 +30,7 @@ import {
 import { Link } from 'react-router-dom';
 import MockInterviewModal from '../../components/MockInterviewModal';
 import ActivityHeatmap from '../../components/ActivityHeatmap';
-import { getSolvedQuestions, recordSolvedQuestion, unrecordSolvedQuestion } from '../../utils/activityTracker';
+import { getSolvedQuestions, recordSolvedQuestion, unrecordSolvedQuestion, syncFromSupabaseCloud } from '../../utils/activityTracker';
 
 const topics = ['All Topics', 'Algorithms', 'System Design', 'Frontend React', 'Behavioral', 'Databases'];
 const companies = ['Google', 'Amazon', 'Microsoft'];
@@ -313,8 +313,15 @@ const Dashboard = () => {
   useEffect(() => {
     const authUserStr = localStorage.getItem('user');
     if (authUserStr) {
-      const authData = JSON.parse(authUserStr);
-      setUserName(authData.name ? authData.name.split(' ')[0] : 'User');
+      try {
+        const authData = JSON.parse(authUserStr);
+        setUserName(authData.name ? authData.name.split(' ')[0] : 'User');
+        if (authData.id && authData.id !== 'local_user') {
+          syncFromSupabaseCloud(authData.id);
+        }
+      } catch (err) {
+        console.warn('Dashboard auth parse notice:', err);
+      }
     }
 
     const handleSolvedUpdate = () => {

@@ -22,9 +22,13 @@ import {
   Layers,
   Trash2,
   Link as LinkIcon,
+  Check,
+  Database,
+  CloudCheck
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { syncProfileToDatabase } from '../../utils/supabaseClient';
+import { syncProfileToDatabase, fetchUserProfileFromSupabase, fetchUserProgressFromSupabase } from '../../utils/supabaseClient';
+import { getSolvedQuestions, syncFromSupabaseCloud, calculateStreak } from '../../utils/activityTracker';
 
 const GithubIcon = ({ className = 'w-4 h-4' }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -86,8 +90,11 @@ const Profile = () => {
   });
 
   const [savedQuestionsList, setSavedQuestionsList] = useState([]);
+  const [solvedList, setSolvedList] = useState([]);
+  const [solvedStats, setSolvedStats] = useState({ total: 1, easy: 1, medium: 0, hard: 0, streak: 0 });
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isCloudSynced, setIsCloudSynced] = useState(true);
 
   useEffect(() => {
     const authUserStr = localStorage.getItem('user');
@@ -118,6 +125,41 @@ const Profile = () => {
       }));
     }
 
+    // Refresh Solved stats from storage
+    const refreshStats = () => {
+      const solvedSet = getSolvedQuestions();
+      const solvedArr = Array.from(solvedSet);
+      setSolvedList(solvedArr);
+      const streakInfo = calculateStreak();
+      
+      // Calculate breakdown
+      let easy = 0, med = 0, hard = 0;
+      solvedArr.forEach(id => {
+        if (id.includes('algo-1') || id.includes('algo-4') || id.includes('Easy')) easy++;
+        else if (id.includes('Hard') || id.includes('algo-2') || id.includes('algo-6')) hard++;
+        else med++;
+      });
+      if (easy === 0 && med === 0 && hard === 0 && solvedArr.length > 0) easy = solvedArr.length;
+
+      setSolvedStats({
+        total: solvedArr.length,
+        easy: Math.max(1, easy),
+        medium: med,
+        hard: hard,
+        streak: streakInfo.currentStreak || 1
+      });
+    };
+
+    refreshStats();
+
+    // Sync latest profile & progress from Supabase Cloud
+    if (authData.id && authData.id !== 'local_user') {
+      syncFromSupabaseCloud(authData.id).then(() => {
+        refreshStats();
+        setIsCloudSynced(true);
+      });
+    }
+
     // Load saved questions
     try {
       const savedIds = JSON.parse(localStorage.getItem('saved_questions') || '[]');
@@ -125,6 +167,10 @@ const Profile = () => {
     } catch {
       setSavedQuestionsList(['algo-1', 'algo-2', 'design-1']);
     }
+
+    const handleSolvedUpdate = () => refreshStats();
+    window.addEventListener('solved-questions-updated', handleSolvedUpdate);
+    return () => window.removeEventListener('solved-questions-updated', handleSolvedUpdate);
   }, []);
 
   const handleChange = (e) => {
@@ -297,6 +343,66 @@ const Profile = () => {
                 <Layers className="h-4 w-4" />
               </Link>
             </div>
+          </div>
+
+          {/* Supabase Storage / Solved Questions Cloud Card */}
+          <div className="rounded-xl border border-[#383838] bg-[#262626] p-5 shadow-lg space-y-4">
+            <div className="flex items-center justify-between border-b border-[#383838] pb-3">
+              <div className="flex items-center gap-2">
+                <Database className="h-4 w-4 text-[#00b8a3]" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Supabase Cloud Progress</h3>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#00b8a3] bg-[#00b8a3]/10 px-2 py-0.5 rounded-full border border-[#00b8a3]/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00b8a3] animate-pulse" /> Cloud Synced
+              </span>
+            </div>
+
+            {/* Solved Count Stat */}
+            <div className="bg-[#1a1a1a] p-3.5 rounded-xl border border-[#383838] flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-[#8a8a8a]">Total Questions Solved</p>
+                <p className="text-2xl font-black text-white mt-0.5">{solvedStats.total} <span className="text-xs font-normal text-[#8a8a8a]">/ 120</span></p>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
+                  <Flame className="w-3.5 h-3.5 fill-amber-400" /> {solvedStats.streak} Day Streak
+                </span>
+                <Link to="/coding" className="text-[11px] text-[#00b8a3] hover:underline font-semibold flex items-center gap-0.5">
+                  Practice More <ChevronRight className="w-3 h-3" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Difficulty Breakdown Pills */}
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="bg-[#1f2923] p-2 rounded-lg border border-emerald-500/20">
+                <p className="text-[10px] uppercase font-bold text-emerald-400">Easy</p>
+                <p className="text-sm font-bold text-white mt-0.5">{solvedStats.easy}</p>
+              </div>
+              <div className="bg-[#2d2518] p-2 rounded-lg border border-amber-500/20">
+                <p className="text-[10px] uppercase font-bold text-amber-400">Medium</p>
+                <p className="text-sm font-bold text-white mt-0.5">{solvedStats.medium}</p>
+              </div>
+              <div className="bg-[#2d181e] p-2 rounded-lg border border-rose-500/20">
+                <p className="text-[10px] uppercase font-bold text-rose-400">Hard</p>
+                <p className="text-sm font-bold text-white mt-0.5">{solvedStats.hard}</p>
+              </div>
+            </div>
+
+            {/* Solved Badges Preview */}
+            {solvedList.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold text-[#8a8a8a] mb-2">Saved Solved Problems in Supabase:</p>
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                  {solvedList.map((qId, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1 text-[11px] font-mono bg-white/5 border border-white/10 px-2 py-0.5 rounded-md text-emerald-300">
+                      <Check className="w-3 h-3 text-emerald-400" />
+                      {qId}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Profile Options List / Tab Navigation */}

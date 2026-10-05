@@ -119,7 +119,7 @@ export const syncProfileToDatabase = async (userId, profileData) => {
       });
 
     if (error) {
-      console.warn('Profiles table sync warning (create table if needed):', error.message);
+      console.warn('Profiles table sync warning:', error.message);
     }
     return { data, error };
   } catch (err) {
@@ -127,17 +127,52 @@ export const syncProfileToDatabase = async (userId, profileData) => {
   }
 };
 
-// Database helper: Sync Solved Questions to Supabase
-export const syncSolvedQuestionsToDB = async (userId, solvedList) => {
+// Database helper: Fetch User Profile from Supabase
+export const fetchUserProfileFromSupabase = async (userId) => {
+  try {
+    if (!userId) return null;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Profile fetch note:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Supabase profile fetch error:', err.message);
+    return null;
+  }
+};
+
+// Database helper: Sync Solved Questions & Progress to Supabase Storage
+export const syncSolvedQuestionsToDB = async (userId, progressData) => {
   try {
     if (!userId) return;
+    
+    // Accept array of solved questions or full progress payload
+    const payload = Array.isArray(progressData) ? {
+      user_id: userId,
+      solved_questions: progressData,
+      total_solved: progressData.length,
+      updated_at: new Date().toISOString()
+    } : {
+      user_id: userId,
+      solved_questions: progressData.solved_questions || [],
+      total_solved: progressData.solved_questions ? progressData.solved_questions.length : (progressData.total_solved || 0),
+      interviews_taken: progressData.interviews_taken || 0,
+      avg_score: progressData.avg_score || 0,
+      coding_accuracy: progressData.coding_accuracy || 0,
+      activity_map: progressData.activity_map || {},
+      updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabase
       .from('user_progress')
-      .upsert({
-        user_id: userId,
-        solved_questions: solvedList,
-        updated_at: new Date().toISOString()
-      });
+      .upsert(payload);
 
     if (error) {
       console.warn('User progress sync warning:', error.message);
@@ -145,5 +180,26 @@ export const syncSolvedQuestionsToDB = async (userId, solvedList) => {
     return { data, error };
   } catch (err) {
     console.warn('Supabase progress sync error:', err.message);
+  }
+};
+
+// Database helper: Fetch User Progress & Solved Questions from Supabase
+export const fetchUserProgressFromSupabase = async (userId) => {
+  try {
+    if (!userId) return null;
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('User progress fetch note:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Supabase progress fetch error:', err.message);
+    return null;
   }
 };
