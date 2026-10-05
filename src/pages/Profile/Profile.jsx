@@ -24,6 +24,7 @@ import {
   Link as LinkIcon,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { syncProfileToDatabase } from '../../utils/supabaseClient';
 
 const GithubIcon = ({ className = 'w-4 h-4' }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -158,30 +159,51 @@ const Profile = () => {
     localStorage.setItem('saved_questions', JSON.stringify(updated));
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     setIsSaving(true);
-    setTimeout(() => {
+    
+    try {
       const allProfiles = JSON.parse(localStorage.getItem('allProfiles') || '{}');
       allProfiles[profile.email] = profile;
       localStorage.setItem('allProfiles', JSON.stringify(allProfiles));
 
       // Also update auth user name
       const authUserStr = localStorage.getItem('user');
+      let userId = null;
       if (authUserStr) {
         try {
           const authData = JSON.parse(authUserStr);
           authData.name = `${profile.firstName} ${profile.lastName}`.trim();
+          userId = authData.id;
           localStorage.setItem('user', JSON.stringify(authData));
         } catch (e) {
           console.error(e);
         }
       }
 
-      setIsSaving(false);
+      // Sync to Supabase Database
+      if (userId) {
+        await syncProfileToDatabase(userId, {
+          first_name: profile.firstName,
+          last_name: profile.lastName,
+          email: profile.email,
+          username: profile.username,
+          target_role: profile.targetRole,
+          bio: profile.bio,
+          skills: profile.skills,
+          university: profile.university,
+          current_company: profile.currentCompany
+        });
+      }
+
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
-    }, 500);
+    } catch (err) {
+      console.warn("Supabase profile sync warning:", err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

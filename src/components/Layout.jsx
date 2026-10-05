@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import Chatbot from './Chatbot';
 
+import { signOutUser } from '../utils/supabaseClient';
+
 const Layout = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -58,8 +60,9 @@ const Layout = () => {
     navItems.push({ name: 'Admin Panel', path: '/admin', icon: Briefcase }); // Or a generic admin icon
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
+  const handleLogout = async () => {
+    await signOutUser();
+    window.location.href = '/auth';
   };
 
   const searchResults = navItems.filter((item) => item.name.toLowerCase().includes(searchTerm.trim().toLowerCase())).slice(0, 5);
