@@ -24,6 +24,7 @@ import {
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { recordActivity } from '../../utils/activityTracker';
+import { generateInterviewReportPdf } from '../../utils/pdfGenerator';
 
 const ScoreBar = ({ label, score, icon: Icon, color, delay = 0 }) => {
   const colorMap = {
@@ -266,17 +267,24 @@ Provide a rigorous evaluation. Return ONLY a valid JSON object matching this str
           </div>
 
           {/* Quick Actions */}
-          <div className="glass-panel p-4 flex items-center justify-between gap-3 border border-white/10">
+          <div className="glass-panel p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border border-white/10">
+            <button
+              onClick={() => generateInterviewReportPdf(feedback)}
+              className="flex-1 w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#ffa116] to-amber-500 hover:opacity-90 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              Download 1-Page PDF
+            </button>
             <button
               onClick={handleCopyReport}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-semibold flex items-center justify-center gap-2 border border-white/10 transition-colors"
+              className="flex-1 w-full py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-semibold flex items-center justify-center gap-2 border border-white/10 transition-colors"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'Copied to Clipboard' : 'Copy Summary'}
+              {copied ? 'Copied Summary' : 'Copy Summary'}
             </button>
             <Link
               to="/voice-interview"
-              className="flex-1 py-2.5 px-3 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-semibold flex items-center justify-center gap-2 border border-blue-500/30 transition-colors"
+              className="flex-1 w-full py-2.5 px-3 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-semibold flex items-center justify-center gap-2 border border-blue-500/30 transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
               Retake Mock

@@ -27,9 +27,12 @@ import {
   Video,
   Wand2,
   Zap,
+  Download,
+  FileDown
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateSkillPdf } from '../../utils/pdfGenerator';
 
 const YoutubeIcon = ({ className = 'w-4 h-4' }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -1574,17 +1577,25 @@ CODE:
             })}
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs text-[#8a8a8a] shrink-0 ml-4">
+          <div className="hidden sm:flex items-center gap-2.5 text-xs text-[#8a8a8a] shrink-0 ml-4">
+            <button
+              onClick={() => generateSkillPdf(COURSE_LANGUAGES.find(l => l.id === selectedLang), currentTopic)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#ffa116] hover:bg-[#e08e13] px-3 py-1.5 text-xs font-bold text-black shadow-md shadow-[#ffa116]/20 transition-all active:scale-95"
+              title={`Download 1-Page ${COURSE_LANGUAGES.find(l => l.id === selectedLang)?.name || 'Skill'} PDF Cheat Sheet`}
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Download 1-Page PDF ({COURSE_LANGUAGES.find(l => l.id === selectedLang)?.name})</span>
+            </button>
             <a
               href={currentCourse.w3schoolUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded bg-[#2e2e2e] border border-[#383838] px-2.5 py-1 text-[11px] font-semibold text-[#00b8a3] hover:border-[#00b8a3] hover:text-white transition-colors"
+              className="inline-flex items-center gap-1 rounded bg-[#2e2e2e] border border-[#383838] px-2.5 py-1.5 text-[11px] font-semibold text-[#00b8a3] hover:border-[#00b8a3] hover:text-white transition-colors"
             >
-              <ExternalLink className="h-3 w-3" /> W3Schools Docs
+              <ExternalLink className="h-3 w-3" /> W3Schools
             </a>
             <span className="font-semibold text-[#ffa116]">{progressPercent}%</span>
-            <div className="h-1.5 w-16 rounded-full bg-[#383838]">
+            <div className="h-1.5 w-14 rounded-full bg-[#383838]">
               <div className="h-full rounded-full bg-[#ffa116]" style={{ width: `${progressPercent}%` }} />
             </div>
           </div>
@@ -1826,6 +1837,15 @@ CODE:
                 >
                   <Bot className="h-3.5 w-3.5 text-[#61dafb]" />
                   <span>AI Deep Dive</span>
+                </button>
+
+                <button
+                  onClick={() => generateSkillPdf(COURSE_LANGUAGES.find(l => l.id === selectedLang), currentTopic)}
+                  className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold bg-[#00b8a3]/15 text-[#00b8a3] hover:bg-[#00b8a3] hover:text-black border border-[#00b8a3]/30 transition-all active:scale-95"
+                  title="Download 1-Page Cheat Sheet PDF for this topic"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">1-Page PDF</span>
                 </button>
               </div>
             </div>
