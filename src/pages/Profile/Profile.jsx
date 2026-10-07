@@ -24,10 +24,11 @@ import {
   Link as LinkIcon,
   Check,
   Database,
-  CloudCheck
+  CloudCheck,
+  LogOut
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { syncProfileToDatabase, fetchUserProfileFromSupabase, fetchUserProgressFromSupabase } from '../../utils/supabaseClient';
+import { syncProfileToDatabase, fetchUserProfileFromSupabase, fetchUserProgressFromSupabase, signOutUser } from '../../utils/supabaseClient';
 import { getSolvedQuestions, syncFromSupabaseCloud, calculateStreak } from '../../utils/activityTracker';
 
 const GithubIcon = ({ className = 'w-4 h-4' }) => (
@@ -252,6 +253,13 @@ const Profile = () => {
     }
   };
 
+  const handleLogout = async () => {
+    if (window.confirm('Are you sure you want to log out of TechPrep?')) {
+      await signOutUser();
+      window.location.href = '/login';
+    }
+  };
+
   return (
     <div className="max-w-[1400px] mx-auto space-y-6 px-4 py-6 text-neutral-200">
       {/* Header */}
@@ -260,13 +268,21 @@ const Profile = () => {
           <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">My Profile & Settings</h1>
           <p className="mt-1 text-sm text-[#8a8a8a]">Manage your personal information, interview preferences, and account configuration.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <Link
             to="/"
             className="rounded-lg border border-[#383838] bg-[#282828] px-3.5 py-2 text-xs font-semibold text-neutral-300 transition-colors hover:bg-[#333333] hover:text-white"
           >
             Back to Dashboard
           </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3.5 py-2 text-xs font-semibold text-rose-300 transition-colors hover:bg-rose-500/20 hover:text-rose-200"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Log Out</span>
+          </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
@@ -877,7 +893,24 @@ const Profile = () => {
                     </label>
                   </div>
 
-                  <div className="pt-3">
+                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 space-y-2 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-rose-300">Account Session</p>
+                        <p className="text-[11px] text-gray-400">Sign out of your active TechPrep account across this browser.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/20 border border-rose-500/40 px-3.5 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/30 hover:text-white transition-all shadow-sm"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Log Out</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
                     <button
                       type="button"
                       onClick={() => {

@@ -21,6 +21,8 @@ function App() {
       <Router>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/signup" element={<Auth />} />
           <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="profile" element={<Profile />} />
