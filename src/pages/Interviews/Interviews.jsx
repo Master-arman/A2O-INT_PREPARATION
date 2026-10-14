@@ -68,13 +68,13 @@ const QUESTION_POOL = [
   { 
     category: 'Object-Oriented Programming', question: 'Implement a thread-safe Singleton pattern in your preferred language.', difficulty: 'Medium', 
     exampleInput: 'db1 = DatabaseConnection.getInstance(), db2 = DatabaseConnection.getInstance()',
-    exampleOutput: 'db1 === db2 // returns true',
-    explanation: 'Both variables hold the exact same instance reference in memory.'
+    exampleOutput: 'true',
+    explanation: 'Both variables hold the exact same instance reference in memory (db1 === db2).'
   },
   { 
     category: 'Data Structures & Algorithms', question: 'How do you find the longest palindromic substring in a given string in O(n) time?', difficulty: 'Hard', 
     exampleInput: 's = "babad"',
-    exampleOutput: '"bab" (or "aba")',
+    exampleOutput: '"bab"',
     explanation: '"bab" is a valid palindrome substring of length 3.'
   },
   { 

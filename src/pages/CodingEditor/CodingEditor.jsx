@@ -25,7 +25,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import { recordSolvedQuestion } from '../../utils/activityTracker';
 import { generateAiSolution, evaluateCodeWithAI } from '../../utils/aiService';
-import { executeJavaScript, getStandardTestCasesForQuestion, estimateComplexity } from '../../utils/testRunner';
+import { executeJavaScript, getStandardTestCasesForQuestion, estimateComplexity, cleanExpectedOutput } from '../../utils/testRunner';
 
 const FALLBACK_QUESTION = {
   id: 'FB1',
@@ -112,6 +112,7 @@ const CodingEditor = () => {
   const [questionsList, setQuestionsList] = useState(() => {
     if (location.state?.questionDetails) {
       const customQ = location.state.questionDetails;
+      const cleanExOut = cleanExpectedOutput(customQ.exampleOutput || '[0, 1]');
       const formattedQ = {
         id: 'AI-1',
         title: customQ.question?.slice(0, 50) || 'Interview Problem',
@@ -119,10 +120,13 @@ const CodingEditor = () => {
         topic: customQ.category || 'Algorithms',
         description: customQ.question,
         exampleInput: customQ.exampleInput || 'nums = [2, 7, 11, 15], target = 9',
-        exampleOutput: customQ.exampleOutput || '[0, 1]',
+        exampleOutput: cleanExOut,
         explanation: customQ.explanation || 'Evaluate requirements carefully, handle edge cases, and ensure optimal data structures are chosen.',
         hint: 'Break down the core components, check bounds and time/space constraints.',
-        testCases: getStandardTestCasesForQuestion(customQ),
+        testCases: getStandardTestCasesForQuestion({
+          ...customQ,
+          exampleOutput: cleanExOut
+        }),
         boilerplates: {}
       };
       return [formattedQ];
@@ -134,6 +138,107 @@ const CodingEditor = () => {
 
   const getBoilerplate = (q, lang) => {
     if (q.boilerplates && q.boilerplates[lang]) return q.boilerplates[lang];
+    const isSingleton = (q.title || '').toLowerCase().includes('singleton') || (q.description || '').toLowerCase().includes('singleton');
+    
+    if (isSingleton) {
+      switch (lang) {
+        case 'javascript':
+        case 'typescript':
+          return `class DatabaseConnection {
+  static instance = null;
+
+  constructor() {
+    if (DatabaseConnection.instance) {
+      return DatabaseConnection.instance;
+    }
+    // Initialize connection resources
+    DatabaseConnection.instance = this;
+  }
+
+  static getInstance() {
+    if (!DatabaseConnection.instance) {
+      DatabaseConnection.instance = new DatabaseConnection();
+    }
+    return DatabaseConnection.instance;
+  }
+}
+
+function solve() {
+  const db1 = DatabaseConnection.getInstance();
+  const db2 = DatabaseConnection.getInstance();
+  return db1 === db2;
+}
+`;
+        case 'python':
+          return `class DatabaseConnection:
+    _instance = None
+
+    @classmethod
+    def getInstance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+def solve():
+    db1 = DatabaseConnection.getInstance()
+    db2 = DatabaseConnection.getInstance()
+    return db1 is db2
+`;
+        case 'java':
+          return `public class DatabaseConnection {
+    private static volatile DatabaseConnection instance;
+
+    private DatabaseConnection() {}
+
+    public static DatabaseConnection getInstance() {
+        if (instance == null) {
+            synchronized (DatabaseConnection.class) {
+                if (instance == null) {
+                    instance = new DatabaseConnection();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public static boolean solve() {
+        DatabaseConnection db1 = DatabaseConnection.getInstance();
+        DatabaseConnection db2 = DatabaseConnection.getInstance();
+        return db1 == db2;
+    }
+}
+`;
+        case 'cpp':
+          return `#include <iostream>
+#include <mutex>
+
+class DatabaseConnection {
+private:
+    static DatabaseConnection* instance;
+    static std::mutex mtx;
+    DatabaseConnection() {}
+
+public:
+    static DatabaseConnection* getInstance() {
+        if (instance == nullptr) {
+            std::lock_guard<std::mutex> lock(mtx);
+            if (instance == nullptr) {
+                instance = new DatabaseConnection();
+            }
+        }
+        return instance;
+    }
+};
+
+bool solve() {
+    auto db1 = DatabaseConnection::getInstance();
+    auto db2 = DatabaseConnection::getInstance();
+    return db1 == db2;
+}
+`;
+      }
+    }
+
     switch (lang) {
       case 'c': return `// C Solution\n#include <stdio.h>\n\nvoid solve() {\n    // Write your code here\n}\n`;
       case 'typescript': return `function solve(): any {\n  // Write your code here\n}\n`;

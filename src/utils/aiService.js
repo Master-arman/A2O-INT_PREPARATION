@@ -1,5 +1,4 @@
-// Unified AI Service Provider with Serverless & Client-Side Provider Abstraction
-import { compareOutputs, estimateComplexity } from './testRunner.js';
+import { compareOutputs, estimateComplexity, cleanExpectedOutput } from './testRunner.js';
 
 const VERIFIED_MODELS = [
   'gemini-3.5-flash-lite',
@@ -279,7 +278,8 @@ function postProcessEvaluation(aiResult, originalTestCases) {
   let passedCount = 0;
   const processedCases = (aiResult.testCases || []).map((tc, idx) => {
     const orig = originalTestCases[idx] || {};
-    const expected = orig.expectedOutput || tc.expectedOutput;
+    const rawExpected = orig.expectedOutput || tc.expectedOutput;
+    const expected = cleanExpectedOutput(rawExpected);
     const actual = tc.actualOutput;
 
     // Apply reliable normalization comparison

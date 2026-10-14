@@ -58,14 +58,78 @@ export function normalizeValue(val) {
 }
 
 /**
+ * Intelligently cleans raw expected output by removing code comments,
+ * prompt annotations, and extracting target values (e.g. "db1 === db2 // returns true" -> "true")
+ */
+export function cleanExpectedOutput(val) {
+  if (val === undefined || val === null) return '';
+  let str = String(val).trim();
+
+  // 1. Matches comments explicitly describing return value, e.g.
+  // "db1 === db2 // returns true", "db1 === db2? // returns true", "// returns true", "=> returns true"
+  const returnsMatch = str.match(/(?:\/\/\s*returns?\s*|\/\/\s*evaluates to\s*|returns?\s+)(true|false|\d+(?:\.\d+)?|\[.*?\]|\{.*?\}|"[^"]*"|'[^']*'|\w+)/i);
+  if (returnsMatch && returnsMatch[1]) {
+    return returnsMatch[1].trim();
+  }
+
+  // 2. Trailing inline comment with boolean or value e.g. "code // true"
+  if (str.includes('//')) {
+    const parts = str.split('//');
+    const commentPart = parts[1].trim().toLowerCase();
+    if (commentPart === 'true' || commentPart === 'false') {
+      return commentPart;
+    }
+    const codePart = parts[0].trim();
+    if (codePart && !codePart.includes('===') && !codePart.includes('==') && !codePart.includes('?') && !codePart.includes('db1')) {
+      return codePart;
+    }
+    if (commentPart.includes('true')) return 'true';
+    if (commentPart.includes('false')) return 'false';
+  }
+
+  // 3. Alternative match in parentheses e.g. '"bab" (or "aba")' -> '"bab"'
+  const parenMatch = str.match(/^([^(]+?)\s*\(\s*or\s+[^)]+\)/i);
+  if (parenMatch && parenMatch[1]) {
+    return parenMatch[1].trim();
+  }
+
+  // 4. Expression without comment e.g. "db1 === db2 -> true"
+  if (str.toLowerCase().includes('returns true')) return 'true';
+  if (str.toLowerCase().includes('returns false')) return 'false';
+
+  return str;
+}
+
+/**
  * Robust equality comparison between actual and expected outputs
  */
 export function compareOutputs(actual, expected) {
+  const cleanExp = cleanExpectedOutput(expected);
   const normActual = normalizeValue(actual);
-  const normExpected = normalizeValue(expected);
+  const normExpected = normalizeValue(cleanExp);
 
   if (normActual === normExpected) {
     return { passed: true, actualStr: normActual, expectedStr: normExpected };
+  }
+
+  // Direct boolean check: if actual is boolean 'true' and raw expected mentions 'returns true' or 'true'
+  if (normActual === 'true' || normActual === 'false') {
+    const rawExpLower = String(expected).toLowerCase();
+    if (rawExpLower.includes(`returns ${normActual}`) || rawExpLower.includes(`// ${normActual}`) || rawExpLower.includes(`// returns ${normActual}`) || rawExpLower.endsWith(` ${normActual}`)) {
+      return { passed: true, actualStr: normActual, expectedStr: normActual };
+    }
+  }
+
+  // Alternative options handling (e.g. "bab" (or "aba"))
+  if (typeof expected === 'string' && expected.includes('(or ')) {
+    const alternatives = expected.split(/\s*\(or\s+|\s*\)\s*|\s*,\s*or\s+/i)
+      .map(s => s.replace(/[()]/g, '').trim())
+      .filter(Boolean);
+    for (const alt of alternatives) {
+      if (normalizeValue(alt) === normActual) {
+        return { passed: true, actualStr: normActual, expectedStr: normActual };
+      }
+    }
   }
 
   // Array comparison check (e.g. [0, 1] vs [1, 0] for index pairs, or whitespace differences)
@@ -92,6 +156,19 @@ export function compareOutputs(actual, expected) {
   } catch {
     // Not valid JSON arrays, proceed with numeric and string fallbacks
   }
+
+  // Array vs comma-separated strings (e.g. [1, -1] vs "1, -1")
+  try {
+    if (normExpected.includes(',')) {
+      const parsedExpList = normExpected.split(',').map(s => s.trim().replace(/^['"]|['"]$/g, ''));
+      if (normActual.startsWith('[') && normActual.endsWith(']')) {
+        const parsedActList = JSON.parse(normActual).map(String);
+        if (parsedActList.length === parsedExpList.length && parsedActList.every((v, i) => v === parsedExpList[i])) {
+          return { passed: true, actualStr: normActual, expectedStr: normExpected };
+        }
+      }
+    }
+  } catch {}
 
   // Numeric comparison with tolerance
   const numAct = Number(normActual);
@@ -328,9 +405,69 @@ export function getStandardTestCasesForQuestion(q) {
     ];
   }
 
+  // 5. Thread-Safe Singleton Pattern
+  if (titleLower.includes('singleton') || descLower.includes('singleton')) {
+    return [
+      {
+        id: 1,
+        title: 'Case 1 (Instance Identity)',
+        input: 'db1 = DatabaseConnection.getInstance(), db2 = DatabaseConnection.getInstance()',
+        expectedOutput: 'true',
+        explanation: 'Both variables hold the exact same instance reference in memory (db1 === db2).'
+      },
+      {
+        id: 2,
+        title: 'Case 2 (Consecutive Instantiation)',
+        input: 'db1 = DatabaseConnection.getInstance(), db3 = DatabaseConnection.getInstance(), db1 === db3',
+        expectedOutput: 'true',
+        explanation: 'Repeated calls return the existing cached instance without creating a new one.'
+      },
+      {
+        id: 3,
+        title: 'Case 3 (Static Factory Method)',
+        input: 'typeof DatabaseConnection.getInstance === "function"',
+        expectedOutput: 'true',
+        explanation: 'The class provides a static getInstance() method as the global access point.'
+      }
+    ];
+  }
+
+  // 6. Longest Palindromic Substring
+  if (titleLower.includes('palindromic substring') || descLower.includes('palindromic substring')) {
+    return [
+      {
+        id: 1,
+        title: 'Case 1 (Standard String)',
+        input: 's = "babad"',
+        expectedOutput: 'bab',
+        args: ['babad'],
+        fnName: 'longestPalindrome',
+        explanation: '"bab" (or "aba") is a valid palindrome substring.'
+      },
+      {
+        id: 2,
+        title: 'Case 2 (Even Length Palindrome)',
+        input: 's = "cbbd"',
+        expectedOutput: 'bb',
+        args: ['cbbd'],
+        fnName: 'longestPalindrome',
+        explanation: '"bb" is the longest palindromic substring.'
+      },
+      {
+        id: 3,
+        title: 'Case 3 (Single Character)',
+        input: 's = "a"',
+        expectedOutput: 'a',
+        args: ['a'],
+        fnName: 'longestPalindrome',
+        explanation: 'Single character string is itself a palindrome.'
+      }
+    ];
+  }
+
   // Generic fallback with concrete values derived from exampleInput and exampleOutput
   const exIn = q.exampleInput || 'input = 1';
-  const exOut = q.exampleOutput || '1';
+  const exOut = cleanExpectedOutput(q.exampleOutput || '1');
 
   return [
     {
@@ -375,12 +512,25 @@ export function executeJavaScript(userCode, testCases) {
     const runner = new Function(`
       ${userCode}
       // Discover candidate function
+      if (typeof solve === 'function') return solve;
+      if (typeof solution === 'function') return solution;
       if (typeof twoSum === 'function') return twoSum;
       if (typeof isValid === 'function') return isValid;
       if (typeof reverseList === 'function') return reverseList;
       if (typeof maxSubArray === 'function') return maxSubArray;
-      if (typeof solve === 'function') return solve;
-      if (typeof solution === 'function') return solution;
+      if (typeof longestPalindrome === 'function') return longestPalindrome;
+
+      // Check if user defined DatabaseConnection class or Singleton
+      if (typeof DatabaseConnection === 'function') {
+        return function runSingletonTest() {
+          if (typeof DatabaseConnection.getInstance === 'function') {
+            const inst1 = DatabaseConnection.getInstance();
+            const inst2 = DatabaseConnection.getInstance();
+            return (inst1 === inst2 && inst1 !== undefined && inst1 !== null);
+          }
+          return false;
+        };
+      }
       
       // Auto-detect any function declared by user
       const globalFuncs = Object.keys(this).filter(k => typeof this[k] === 'function');
@@ -401,6 +551,7 @@ export function executeJavaScript(userCode, testCases) {
         feedback: 'No executable function found. Ensure you declare the required function name.',
         testCases: testCases.map(tc => ({
           ...tc,
+          expectedOutput: cleanExpectedOutput(tc.expectedOutput),
           actualOutput: 'Function not defined',
           passed: false
         }))
@@ -428,10 +579,11 @@ export function executeJavaScript(userCode, testCases) {
         execError = err.message;
       }
 
+      const cleanExp = cleanExpectedOutput(tc.expectedOutput);
       const actualDisplay = execError ? `Runtime Error: ${execError}` : normalizeValue(actualResult);
       const comparison = execError 
         ? { passed: false } 
-        : compareOutputs(actualResult, tc.expectedOutput);
+        : compareOutputs(actualResult, cleanExp);
 
       if (comparison.passed) passedCount++;
 
@@ -439,7 +591,7 @@ export function executeJavaScript(userCode, testCases) {
         id: tc.id || (i + 1),
         title: tc.title || `Case ${i + 1}`,
         input: tc.input,
-        expectedOutput: tc.expectedOutput,
+        expectedOutput: cleanExp,
         actualOutput: actualDisplay,
         passed: comparison.passed,
         explanation: tc.explanation || (comparison.passed ? 'Output verified successfully.' : comparison.reason)
