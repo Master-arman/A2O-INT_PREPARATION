@@ -130,7 +130,7 @@ const InterviewFeedback = () => {
         .join('\n');
 
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+      const models = ['gemini-3.5-flash-lite', 'gemini-3-flash-preview', 'gemini-3.8-flash', 'gemini-3.6-flash'];
 
       const prompt = `You are a Principal Tech Interview Evaluator at Google/Meta. Evaluate this mock interview conversation (${source}):
 ---
@@ -158,14 +158,23 @@ Provide a rigorous evaluation. Return ONLY a valid JSON object matching this str
   ]
 }`;
 
-      const result = await Promise.race([
-        model.generateContent(prompt),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('AI evaluation timed out')), 15000))
-      ]);
+      let parsed = null;
+      for (const m of models) {
+        try {
+          const model = genAI.getGenerativeModel({ model: m });
+          const result = await Promise.race([
+            model.generateContent(prompt),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('AI evaluation timed out')), 10000))
+          ]);
 
-      let text = result.response.text().trim();
-      text = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
-      const parsed = JSON.parse(text);
+          let text = result.response.text().trim();
+          text = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
+          parsed = JSON.parse(text);
+          if (parsed && typeof parsed.overallScore === 'number') break;
+        } catch {
+          continue;
+        }
+      }
 
       if (parsed && typeof parsed.overallScore === 'number') {
         setFeedback(parsed);

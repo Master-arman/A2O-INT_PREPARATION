@@ -167,7 +167,7 @@ const MockInterviewModal = ({ isOpen, onClose }) => {
     if (apiKey) {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const modelCandidates = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.8-flash"];
+        const modelCandidates = ["gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.8-flash", "gemini-3.6-flash", "gemini-flash-latest"];
         const prompt = `You are a strict Online Judge.
 Evaluate the user's ${lang} code for the "Two Sum" problem:
 Given array nums and integer target, return indices of two numbers that sum up to target.

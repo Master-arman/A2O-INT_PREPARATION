@@ -78,16 +78,23 @@ const Chatbot = () => {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (apiKey && apiKey.length > 20) {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
-        const res = await Promise.race([
-          model.generateContent(`You are an expert tech tutor and coding mentor specializing in interview preparation. Answer this query helpfully and concisely, with code examples if relevant: "${query}"`),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
-        ]);
-        const text = res.response.text();
-        if (text) {
-          setMessages((prev) => [...prev, { id: Date.now() + 1, role: 'ai', text }]);
-          setIsTyping(false);
-          return;
+        const models = ['gemini-3.5-flash-lite', 'gemini-3-flash-preview', 'gemini-3.8-flash', 'gemini-3.6-flash'];
+        for (const m of models) {
+          try {
+            const model = genAI.getGenerativeModel({ model: m });
+            const res = await Promise.race([
+              model.generateContent(`You are an expert tech tutor and coding mentor specializing in interview preparation. Answer this query helpfully and concisely, with code examples if relevant: "${query}"`),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+            ]);
+            const text = res.response.text();
+            if (text) {
+              setMessages((prev) => [...prev, { id: Date.now() + 1, role: 'ai', text }]);
+              setIsTyping(false);
+              return;
+            }
+          } catch {
+            continue;
+          }
         }
       }
     } catch (e) {

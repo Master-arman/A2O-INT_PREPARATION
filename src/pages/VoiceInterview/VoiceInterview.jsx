@@ -77,7 +77,7 @@ const VoiceInterview = () => {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (apiKey && apiKey.length > 20) {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const modelCandidates = ["gemini-3.6-flash", "gemini-flash-latest"];
+        const modelCandidates = ["gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.8-flash", "gemini-3.6-flash", "gemini-flash-latest"];
         
         const historyPrompt = chatHistory.slice(-4).map(m => `${m.role === 'ai' ? 'Interviewer' : 'Candidate'}: ${m.text}`).join('\n');
         const prompt = `You are an elite, realistic FAANG behavioral interviewer.

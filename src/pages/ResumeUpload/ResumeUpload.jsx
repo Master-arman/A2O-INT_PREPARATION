@@ -24,7 +24,7 @@ const ResumeUpload = () => {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (apiKey && apiKey.length > 20) {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const modelCandidates = ["gemini-3.6-flash", "gemini-flash-latest"];
+        const modelCandidates = ["gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.8-flash", "gemini-3.6-flash", "gemini-flash-latest"];
         
         const fileName = file ? file.name : 'Candidate Resume';
         const prompt = `You are a Senior Technical Recruiter and ATS Resume Expert.
