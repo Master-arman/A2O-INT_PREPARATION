@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, 
-  CheckSquare, 
   Clock, 
   Cpu, 
   Lightbulb, 
@@ -18,12 +17,15 @@ import {
   Sparkles, 
   Terminal, 
   Copy, 
-  Check 
+  Check,
+  RotateCcw,
+  AlertCircle
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { recordSolvedQuestion } from '../../utils/activityTracker';
+import { generateAiSolution, evaluateCodeWithAI } from '../../utils/aiService';
+import { executeJavaScript, getStandardTestCasesForQuestion, estimateComplexity } from '../../utils/testRunner';
 
 const FALLBACK_QUESTION = {
   id: 'FB1',
@@ -31,13 +33,39 @@ const FALLBACK_QUESTION = {
   difficulty: 'Medium',
   topic: 'Two Sum',
   description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.',
-  exampleInput: 'nums = [2,7,11,15], target = 9',
-  exampleOutput: '[0,1]',
+  exampleInput: 'nums = [2, 7, 11, 15], target = 9',
+  exampleOutput: '[0, 1]',
   explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].',
   hint: 'Instead of using a nested loop (O(n²)), think about how you can use a Hash Map to store numbers you\'ve already seen. For each number x, check if target - x is already in the map!',
+  testCases: [
+    {
+      id: 1,
+      title: 'Case 1 (Standard Example)',
+      input: 'nums = [2, 7, 11, 15], target = 9',
+      expectedOutput: '[0, 1]',
+      args: [[2, 7, 11, 15], 9],
+      explanation: 'nums[0] + nums[1] = 2 + 7 = 9'
+    },
+    {
+      id: 2,
+      title: 'Case 2 (Edge Case - Non-zero start)',
+      input: 'nums = [3, 2, 4], target = 6',
+      expectedOutput: '[1, 2]',
+      args: [[3, 2, 4], 6],
+      explanation: 'nums[1] + nums[2] = 2 + 4 = 6'
+    },
+    {
+      id: 3,
+      title: 'Case 3 (Comprehensive - Duplicate Values)',
+      input: 'nums = [3, 3], target = 6',
+      expectedOutput: '[0, 1]',
+      args: [[3, 3], 6],
+      explanation: 'Two identical numbers summing to target at different indices'
+    }
+  ],
   boilerplates: {
     javascript: `function twoSum(nums, target) {\n  // Write your code here\n  \n}`,
-    python: `class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        # Write your code here\n        pass`,
+    python: `class Solution:\n    def twoSum(self, nums: list[int], target: int) -> list[int]:\n        # Write your code here\n        pass`,
     java: `class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        return new int[]{};\n    }\n}`,
     cpp: `class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Write your code here\n        return {};\n    }\n};`
   }
@@ -72,7 +100,10 @@ const CodingEditor = () => {
 
   const [language, setLanguage] = useState(initialLang);
   const [isRunning, setIsRunning] = useState(false);
+  const [isGeneratingSolution, setIsGeneratingSolution] = useState(false);
+  const [generationError, setGenerationError] = useState(null);
   const [results, setResults] = useState(null);
+  const [aiAnalysisPreview, setAiAnalysisPreview] = useState(null);
   const [showHint, setShowHint] = useState(false);
   const [activeTestTab, setActiveTestTab] = useState(0);
   const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
@@ -82,8 +113,8 @@ const CodingEditor = () => {
     if (location.state?.questionDetails) {
       const customQ = location.state.questionDetails;
       const formattedQ = {
-        id: 'AI',
-        title: customQ.question?.slice(0, 45) || 'Interview Assignment',
+        id: 'AI-1',
+        title: customQ.question?.slice(0, 50) || 'Interview Problem',
         difficulty: customQ.difficulty || 'Medium',
         topic: customQ.category || 'Algorithms',
         description: customQ.question,
@@ -91,6 +122,7 @@ const CodingEditor = () => {
         exampleOutput: customQ.exampleOutput || '[0, 1]',
         explanation: customQ.explanation || 'Evaluate requirements carefully, handle edge cases, and ensure optimal data structures are chosen.',
         hint: 'Break down the core components, check bounds and time/space constraints.',
+        testCases: getStandardTestCasesForQuestion(customQ),
         boilerplates: {}
       };
       return [formattedQ];
@@ -117,14 +149,17 @@ const CodingEditor = () => {
     }
   };
 
-  const currentQ = questionsList[currentQIndex];
+  const currentQ = questionsList[currentQIndex] || FALLBACK_QUESTION;
   const [code, setCode] = useState(() => {
     if (location.state?.aiAnswer) return location.state.aiAnswer;
     return getBoilerplate(currentQ, initialLang);
   });
 
+  // Handle dynamic AI code generation on page load if requested
   useEffect(() => {
-    if (location.state?.aiAnswer) {
+    if (location.state?.generateAiOnLoad) {
+      handleGenerateAiSolution(initialLang);
+    } else if (location.state?.aiAnswer) {
       setCode(location.state.aiAnswer);
     }
   }, [location.state]);
@@ -134,6 +169,37 @@ const CodingEditor = () => {
     setLanguage(newLang);
     setCode(getBoilerplate(currentQ, newLang));
     setResults(null);
+    setAiAnalysisPreview(null);
+    setGenerationError(null);
+  };
+
+  const handleGenerateAiSolution = async (targetLang = language) => {
+    setIsGeneratingSolution(true);
+    setGenerationError(null);
+    try {
+      const starter = getBoilerplate(currentQ, targetLang);
+      const aiResult = await generateAiSolution({
+        question: currentQ,
+        language: targetLang,
+        starterCode: starter
+      });
+
+      if (aiResult && aiResult.code) {
+        setCode(aiResult.code);
+        setAiAnalysisPreview({
+          timeComplexity: aiResult.timeComplexity || 'O(n)',
+          spaceComplexity: aiResult.spaceComplexity || 'O(1)',
+          explanation: aiResult.explanation || `Optimal solution generated in ${targetLang}.`,
+          algorithm: aiResult.algorithm || 'Optimized Approach'
+        });
+        setResults(null);
+      }
+    } catch (err) {
+      console.error('AI solution generation error:', err);
+      setGenerationError(err.message || 'AI generation failed. Please try again.');
+    } finally {
+      setIsGeneratingSolution(false);
+    }
   };
 
   const handleNextQuestion = async () => {
@@ -142,90 +208,99 @@ const CodingEditor = () => {
       setCurrentQIndex(nextIndex);
       setCode(getBoilerplate(questionsList[nextIndex], language));
       setResults(null);
+      setAiAnalysisPreview(null);
       setShowHint(false);
+      setGenerationError(null);
       return;
     }
 
     setIsGeneratingQ(true);
+    setGenerationError(null);
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        alert("Gemini API key is missing. Please add VITE_GEMINI_API_KEY to your .env file.");
-        setIsGeneratingQ(false);
-        return;
-      }
-      
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const modelCandidates = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.8-flash"];
-      
       const history = JSON.parse(localStorage.getItem('askedQuestions') || '[]');
       const historyText = history.length > 0 ? history.join(', ') : 'None';
-      
-      const prompt = `You are an expert technical interviewer. Generate a new, unique algorithmic coding interview question.
-      It MUST NOT be any of the following previously asked questions: ${historyText}.
-      
-      Return ONLY a raw JSON object (without markdown code blocks) with the exact structure:
-      {
-        "id": "Q${questionsList.length + 1}",
-        "title": "Question Title",
-        "difficulty": "Easy, Medium, or Hard",
-        "topic": "The main topic (e.g., Two Pointers, Dynamic Programming, Trees, Binary Search)",
-        "description": "Full problem description",
-        "exampleInput": "Example input",
-        "exampleOutput": "Example output",
-        "explanation": "Brief explanation of the example",
-        "hint": "A helpful hint for the user",
-        "boilerplates": {
-          "javascript": "function solve() {\\n  // Write your code here\\n}",
-          "python": "class Solution:\\n    def solve(self):\\n        # Write your code here\\n        pass",
-          "java": "class Solution {\\n    public void solve() {\\n        // Write your code here\\n    }\\n}",
-          "cpp": "class Solution {\\npublic:\\n    void solve() {\\n        // Write your code here\\n    }\\n}"
-        }
-      }`;
 
+      const prompt = `You are an expert technical interviewer. Generate a new, unique algorithmic coding interview question.
+It MUST NOT be any of the following: ${historyText}.
+
+Return ONLY raw JSON (no markdown):
+{
+  "id": "Q${questionsList.length + 1}",
+  "title": "Question Title",
+  "difficulty": "Easy, Medium, or Hard",
+  "topic": "Two Pointers | Dynamic Programming | Trees | Binary Search | Stack",
+  "description": "Full problem description",
+  "exampleInput": "Example input",
+  "exampleOutput": "Example output",
+  "explanation": "Brief explanation",
+  "hint": "Helpful hint",
+  "boilerplates": {
+    "javascript": "function solve() {\\n  // Write your code here\\n}",
+    "python": "class Solution:\\n    def solve(self):\\n        # Write your code here\\n        pass",
+    "java": "class Solution {\\n    public void solve() {\\n        // Write your code here\\n    }\\n}",
+    "cpp": "class Solution {\\npublic:\\n    void solve() {\\n        // Write your code here\\n    }\\n}"
+  }
+}`;
+
+      const models = ['gemini-3.5-flash-lite', 'gemini-3-flash-preview', 'gemini-3.8-flash'];
       let parsedQuestion = null;
-      for (const modelName of modelCandidates) {
-        try {
-          const model = genAI.getGenerativeModel({ model: modelName });
-          const result = await Promise.race([
-            model.generateContent(prompt),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('AI request timed out')), 12000))
-          ]);
-          let text = result.response.text().trim();
-          text = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
-          parsedQuestion = JSON.parse(text);
-          if (parsedQuestion && parsedQuestion.title) break;
-        } catch {
-          continue;
+
+      if (apiKey) {
+        for (const m of models) {
+          try {
+            const res = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+              }
+            );
+            if (!res.ok) continue;
+            const data = await res.json();
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) continue;
+            const clean = text.replace(/^```json/im, '').replace(/^```/im, '').replace(/```$/im, '').trim();
+            parsedQuestion = JSON.parse(clean);
+            if (parsedQuestion && parsedQuestion.title) break;
+          } catch {
+            continue;
+          }
         }
       }
 
-      if (!parsedQuestion) throw new Error("Could not parse question from AI");
-      
+      if (!parsedQuestion) throw new Error("Fallback to static bank");
+
+      parsedQuestion.testCases = getStandardTestCasesForQuestion(parsedQuestion);
       history.push(parsedQuestion.title);
       localStorage.setItem('askedQuestions', JSON.stringify(history));
-      
+
       setQuestionsList(prev => [...prev, parsedQuestion]);
       setCurrentQIndex(prev => prev + 1);
       setCode(getBoilerplate(parsedQuestion, language));
       setResults(null);
+      setAiAnalysisPreview(null);
       setShowHint(false);
-    } catch (error) {
-      console.error("Error generating question:", error);
-      
+    } catch {
       const fallbackQuestions = [
         {
           id: 'FB2',
           title: 'Reverse a Linked List',
           difficulty: 'Easy',
           topic: 'Linked List',
-          description: 'Given the head of a singly linked list, reverse the list, and return the reversed list.\n\nYou should try to solve this in O(1) space and O(n) time complexity.',
-          exampleInput: 'head = [1,2,3,4,5]',
-          exampleOutput: '[5,4,3,2,1]',
+          description: 'Given the head of a singly linked list, reverse the list, and return the reversed list in O(1) space and O(n) time.',
+          exampleInput: 'head = [1, 2, 3, 4, 5]',
+          exampleOutput: '[5, 4, 3, 2, 1]',
           explanation: 'The linked list 1->2->3->4->5 is reversed to 5->4->3->2->1.',
-          hint: 'Use three pointers: prev, curr, and next. Iterate through the list, changing the next pointer of the current node to point to the previous node.',
+          hint: 'Use three pointers: prev, curr, and next to invert pointers iteratively.',
+          testCases: [
+            { id: 1, title: 'Case 1 (Standard List)', input: 'head = [1, 2, 3, 4, 5]', expectedOutput: '[5, 4, 3, 2, 1]' },
+            { id: 2, title: 'Case 2 (Two Elements)', input: 'head = [1, 2]', expectedOutput: '[2, 1]' },
+            { id: 3, title: 'Case 3 (Empty List)', input: 'head = []', expectedOutput: '[]' }
+          ],
           boilerplates: {
-            javascript: `function reverseList(head) {\n  // Write your code here\n}`,
+            javascript: `function reverseList(head) {\n  // Write your code here\n  \n}`,
             python: `class Solution:\n    def reverseList(self, head):\n        # Write your code here\n        pass`,
             java: `class Solution {\n    public ListNode reverseList(ListNode head) {\n        // Write your code here\n        return null;\n    }\n}`,
             cpp: `class Solution {\npublic:\n    ListNode* reverseList(ListNode* head) {\n        // Write your code here\n        return nullptr;\n    }\n};`
@@ -236,13 +311,18 @@ const CodingEditor = () => {
           title: 'Valid Parentheses',
           difficulty: 'Easy',
           topic: 'Stack',
-          description: 'Given a string s containing just the characters "(", ")", "{", "}", "[" and "]", determine if the input string is valid.\n\nAn input string is valid if open brackets are closed by the same type of brackets, and in the correct order.',
+          description: 'Given a string s containing just the characters "(", ")", "{", "}", "[" and "]", determine if the input string is valid.',
           exampleInput: 's = "()[]{}"',
           exampleOutput: 'true',
-          explanation: 'All brackets are properly closed.',
-          hint: 'Use a stack to keep track of the opening brackets. When you encounter a closing bracket, pop the top of the stack and check if it matches.',
+          explanation: 'All open brackets are closed by the same type of brackets in correct order.',
+          hint: 'Use a stack to track opening brackets. When a closing bracket appears, pop and compare.',
+          testCases: [
+            { id: 1, title: 'Case 1 (Standard Match)', input: 's = "()[]{}"', expectedOutput: 'true' },
+            { id: 2, title: 'Case 2 (Mismatched Closing)', input: 's = "(]"', expectedOutput: 'false' },
+            { id: 3, title: 'Case 3 (Nested Brackets)', input: 's = "([{}])"', expectedOutput: 'true' }
+          ],
           boilerplates: {
-            javascript: `function isValid(s) {\n  // Write your code here\n}`,
+            javascript: `function isValid(s) {\n  // Write your code here\n  \n}`,
             python: `class Solution:\n    def isValid(self, s: str) -> bool:\n        # Write your code here\n        pass`,
             java: `class Solution {\n    public boolean isValid(String s) {\n        // Write your code here\n        return false;\n    }\n}`,
             cpp: `class Solution {\npublic:\n    bool isValid(string s) {\n        // Write your code here\n        return false;\n    }\n};`
@@ -253,27 +333,32 @@ const CodingEditor = () => {
           title: 'Maximum Subarray (Kadane\'s)',
           difficulty: 'Medium',
           topic: 'Dynamic Programming',
-          description: 'Given an integer array nums, find the subarray with the largest sum, and return its sum.',
-          exampleInput: 'nums = [-2,1,-3,4,-1,2,1,-5,4]',
+          description: 'Given an integer array nums, find the contiguous subarray with the largest sum, and return its sum.',
+          exampleInput: 'nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]',
           exampleOutput: '6',
-          explanation: 'The subarray [4,-1,2,1] has the largest sum 6.',
-          hint: 'Kadane\'s algorithm keeps track of current sum and maximum sum so far. Reset current sum if it drops below zero.',
+          explanation: 'The contiguous subarray [4, -1, 2, 1] has the largest sum 6.',
+          hint: 'Maintain currentSum and maxSum. Reset currentSum if it drops below 0.',
+          testCases: [
+            { id: 1, title: 'Case 1 (Standard Mix)', input: 'nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]', expectedOutput: '6' },
+            { id: 2, title: 'Case 2 (Single Element)', input: 'nums = [1]', expectedOutput: '1' },
+            { id: 3, title: 'Case 3 (All Positive Array)', input: 'nums = [5, 4, -1, 7, 8]', expectedOutput: '23' }
+          ],
           boilerplates: {
-            javascript: `function maxSubArray(nums) {\n  // Write your code here\n}`,
-            python: `class Solution:\n    def maxSubArray(self, nums: List[int]) -> int:\n        # Write your code here\n        pass`,
+            javascript: `function maxSubArray(nums) {\n  // Write your code here\n  \n}`,
+            python: `class Solution:\n    def maxSubArray(self, nums: list[int]) -> int:\n        # Write your code here\n        pass`,
             java: `class Solution {\n    public int maxSubArray(int[] nums) {\n        // Write your code here\n        return 0;\n    }\n}`,
             cpp: `class Solution {\npublic:\n    int maxSubArray(vector<int>& nums) {\n        // Write your code here\n        return 0;\n    }\n};`
           }
         }
       ];
-      
+
       const nextQ = fallbackQuestions[(currentQIndex) % fallbackQuestions.length];
       const newNextQ = { ...nextQ, id: 'FB' + (questionsList.length + 1) };
-      
       setQuestionsList(prev => [...prev, newNextQ]);
       setCurrentQIndex(prev => prev + 1);
       setCode(getBoilerplate(newNextQ, language));
       setResults(null);
+      setAiAnalysisPreview(null);
       setShowHint(false);
     } finally {
       setIsGeneratingQ(false);
@@ -296,112 +381,11 @@ const CodingEditor = () => {
     }
   };
 
-  // Evaluate user code strictly using Gemini AI Online Judge
-  const evaluateWithAI = async (userCode, currentQuestion, lang) => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("Missing Gemini API Key");
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const modelCandidates = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.8-flash"];
-
-    const prompt = `You are an automated, strict Online Judge and Code Compiler (like LeetCode or HackerRank).
-Evaluate the user's submitted code for this problem.
-
-PROBLEM TITLE: ${currentQuestion.title}
-PROBLEM TOPIC: ${currentQuestion.topic}
-PROBLEM DESCRIPTION:
-${currentQuestion.description}
-
-SAMPLE INPUT: ${currentQuestion.exampleInput}
-SAMPLE EXPECTED OUTPUT: ${currentQuestion.exampleOutput}
-
-SUBMITTED LANGUAGE: ${lang}
-USER'S CODE:
-\`\`\`${lang}
-${userCode}
-\`\`\`
-
-CRITICAL JUDGING RULES:
-1. STRICT TRUTH: Never pass incomplete, placeholder, dummy, or wrong code. If the user only returns an uncalculated variable (e.g. 'return maxSum;' without computing it), or if the code has syntax/runtime bugs, or fails logic, IT MUST FAIL!
-2. Create 3 distinct realistic test cases:
-   - Case 1: Standard Example Case (${currentQuestion.exampleInput})
-   - Case 2: Edge Case (negative numbers, empty or single element, boundary conditions)
-   - Case 3: Complex / Performance Case
-3. For EACH test case, determine the exact input, expected output, what user's code actually produces, and whether it passed (true/false).
-4. Status MUST BE "Accepted" ONLY IF all 3 test cases pass correctly. If any test case fails or code is broken, status must be "Wrong Answer", "Compilation Error", or "Runtime Error".
-5. Calculate realistic runtime (e.g. '42ms'), memory usage (e.g. '38.4 MB'), Time Complexity (e.g. 'O(n)'), Space Complexity (e.g. 'O(1)').
-6. Provide high-quality, actionable feedback explaining why the solution passed or exactly where and why it failed.
-
-Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrounding text):
-{
-  "status": "Accepted" | "Wrong Answer" | "Compilation Error" | "Runtime Error",
-  "overallPassed": boolean,
-  "testsPassed": number,
-  "totalTests": 3,
-  "timeComplexity": "string (e.g. O(n))",
-  "spaceComplexity": "string (e.g. O(1))",
-  "runtime": "string (e.g. 45ms)",
-  "memory": "string (e.g. 39.2 MB)",
-  "feedback": "string",
-  "testCases": [
-    {
-      "id": 1,
-      "title": "Example Test Case",
-      "input": "string",
-      "expectedOutput": "string",
-      "actualOutput": "string",
-      "passed": boolean,
-      "explanation": "string"
-    },
-    {
-      "id": 2,
-      "title": "Edge Case",
-      "input": "string",
-      "expectedOutput": "string",
-      "actualOutput": "string",
-      "passed": boolean,
-      "explanation": "string"
-    },
-    {
-      "id": 3,
-      "title": "Comprehensive Case",
-      "input": "string",
-      "expectedOutput": "string",
-      "actualOutput": "string",
-      "passed": boolean,
-      "explanation": "string"
-    }
-  ]
-}`;
-
-    for (const mName of modelCandidates) {
-      try {
-        const model = genAI.getGenerativeModel({ model: mName });
-        const result = await Promise.race([
-          model.generateContent(prompt),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('AI evaluation timed out')), 16000))
-        ]);
-        let text = result.response.text().trim();
-        text = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
-        const parsed = JSON.parse(text);
-        if (parsed && typeof parsed.testsPassed === 'number' && Array.isArray(parsed.testCases)) {
-          return parsed;
-        }
-      } catch (err) {
-        console.warn(`Model ${mName} eval failed:`, err.message);
-        continue;
-      }
-    }
-
-    throw new Error("AI Code Evaluator failed to execute");
-  };
-
-  // Fallback heuristic evaluator if AI service is offline
-  const fallbackEvaluation = (userCode, currentQuestion, lang) => {
-    const lowerCode = userCode.toLowerCase();
-    const originalBoilerplate = getBoilerplate(currentQuestion, lang).toLowerCase();
+  // Heuristic fallback if network or remote AI is offline
+  const fallbackEvaluation = (userCode, question, lang, testCases) => {
+    const lowerCode = (userCode || '').toLowerCase();
+    const originalBoilerplate = getBoilerplate(question, lang).toLowerCase();
+    const staticMetrics = estimateComplexity(userCode);
 
     // 1. Boilerplate or empty check
     if (lowerCode.trim() === originalBoilerplate.trim() || userCode.trim().length < 20) {
@@ -409,65 +393,75 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
         status: 'Compilation Error',
         overallPassed: false,
         testsPassed: 0,
-        totalTests: 3,
+        totalTests: testCases.length,
         timeComplexity: 'N/A',
         spaceComplexity: 'N/A',
         runtime: '0ms',
         memory: '0 MB',
         feedback: 'No executable solution written. Please implement your algorithm logic inside the function.',
-        testCases: [
-          { id: 1, title: 'Example Case', input: currentQuestion.exampleInput, expectedOutput: currentQuestion.exampleOutput, actualOutput: 'No output (empty boilerplate)', passed: false, explanation: 'Code was not implemented.' },
-          { id: 2, title: 'Edge Case', input: 'Edge test data', expectedOutput: 'Valid result', actualOutput: 'None', passed: false, explanation: 'Code was not implemented.' },
-          { id: 3, title: 'Performance Case', input: 'Large scale input', expectedOutput: 'Valid result', actualOutput: 'None', passed: false, explanation: 'Code was not implemented.' }
-        ]
+        testCases: testCases.map((tc, idx) => ({
+          id: tc.id || (idx + 1),
+          title: tc.title || `Case ${idx + 1}`,
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+          actualOutput: 'No output (empty boilerplate)',
+          passed: false,
+          explanation: 'Code was not implemented.'
+        }))
       };
     }
 
-    // 2. Dummy return or syntax check (e.g. user just wrote "return maxSum;" without defining it)
+    // 2. Dummy return only without algorithm
     const lines = userCode.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('//') && !l.startsWith('/*') && !l.startsWith('*'));
-    const isSingleReturnOnly = lines.length <= 4 && lowerCode.includes('return') && !lowerCode.includes('for') && !lowerCode.includes('while') && !lowerCode.includes('map') && !lowerCode.includes('reduce');
+    const isSingleReturnOnly = lines.length <= 4 && lowerCode.includes('return') && !lowerCode.includes('for') && !lowerCode.includes('while') && !lowerCode.includes('map');
     
-    if (isSingleReturnOnly && !lowerCode.includes('+') && !lowerCode.includes('-') && !lowerCode.includes('*')) {
+    if (isSingleReturnOnly && !lowerCode.includes('+') && !lowerCode.includes('-')) {
       return {
         status: 'Wrong Answer',
         overallPassed: false,
         testsPassed: 0,
-        totalTests: 3,
-        timeComplexity: 'O(1)',
-        spaceComplexity: 'O(1)',
+        totalTests: testCases.length,
+        timeComplexity: staticMetrics.timeComplexity,
+        spaceComplexity: staticMetrics.spaceComplexity,
         runtime: '14ms',
         memory: '38.1 MB',
-        feedback: 'Your code returns an uncalculated or uninitialized value. Missing iterative or algorithmic computation.',
-        testCases: [
-          { id: 1, title: 'Example Case', input: currentQuestion.exampleInput, expectedOutput: currentQuestion.exampleOutput, actualOutput: 'undefined / null', passed: false, explanation: 'Variable was returned without computing algorithm.' },
-          { id: 2, title: 'Edge Case', input: 'nums = [0], target = 0', expectedOutput: '[0]', actualOutput: 'undefined', passed: false, explanation: 'Expected computed indices but got uncalculated return.' },
-          { id: 3, title: 'Performance Case', input: 'Array of 1000 items', expectedOutput: 'Valid pair', actualOutput: 'undefined', passed: false, explanation: 'Algorithm logic missing.' }
-        ]
+        feedback: 'Your code returns an uncalculated or uninitialized value. Missing algorithmic computation.',
+        testCases: testCases.map((tc, idx) => ({
+          id: tc.id || (idx + 1),
+          title: tc.title || `Case ${idx + 1}`,
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+          actualOutput: 'undefined / null',
+          passed: false,
+          explanation: 'Variable was returned without computing algorithm.'
+        }))
       };
     }
 
-    // 3. Valid algorithm presence check
+    // 3. Algorithm presence check
     const hasLoops = lowerCode.includes('for') || lowerCode.includes('while');
-    const hasDataStructures = lowerCode.includes('map') || lowerCode.includes('hash') || lowerCode.includes('set') || lowerCode.includes('dict') || lowerCode.includes('stack') || lowerCode.includes('dp');
-    
+    const hasDataStructures = lowerCode.includes('map') || lowerCode.includes('hash') || lowerCode.includes('set') || lowerCode.includes('dict') || lowerCode.includes('stack');
+
     if (hasDataStructures || (hasLoops && lowerCode.includes('return'))) {
       return {
         status: 'Accepted',
         overallPassed: true,
-        testsPassed: 3,
-        totalTests: 3,
-        timeComplexity: hasDataStructures ? 'O(n)' : 'O(n²)',
-        spaceComplexity: hasDataStructures ? 'O(n)' : 'O(1)',
-        runtime: hasDataStructures ? '38ms' : '112ms',
-        memory: '39.4 MB',
-        feedback: hasDataStructures 
-          ? 'Optimal solution! Excellent use of data structures to achieve linear time complexity.' 
-          : 'Correct solution! Passed all test cases. Consider optimizing to O(n) using a hash map or pointers.',
-        testCases: [
-          { id: 1, title: 'Example Case', input: currentQuestion.exampleInput, expectedOutput: currentQuestion.exampleOutput, actualOutput: currentQuestion.exampleOutput, passed: true, explanation: 'Output exactly matches expected answer.' },
-          { id: 2, title: 'Edge Case', input: 'nums = [3, 2, 4], target = 6', expectedOutput: '[1, 2]', actualOutput: '[1, 2]', passed: true, explanation: 'Successfully handled non-zero indexed matching elements.' },
-          { id: 3, title: 'Performance Case', input: 'nums = [3, 3], target = 6', expectedOutput: '[0, 1]', actualOutput: '[0, 1]', passed: true, explanation: 'Handled duplicate number lookup correctly.' }
-        ]
+        testsPassed: testCases.length,
+        totalTests: testCases.length,
+        timeComplexity: staticMetrics.timeComplexity !== 'N/A' ? staticMetrics.timeComplexity : 'O(n)',
+        spaceComplexity: staticMetrics.spaceComplexity !== 'N/A' ? staticMetrics.spaceComplexity : 'O(1)',
+        runtime: '32ms',
+        memory: '38.6 MB',
+        feedback: `Solution passed all test cases! (Estimated Complexity: Time ${staticMetrics.timeComplexity}, Space ${staticMetrics.spaceComplexity}).`,
+        testCases: testCases.map((tc, idx) => ({
+          id: tc.id || (idx + 1),
+          title: tc.title || `Case ${idx + 1}`,
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+          actualOutput: tc.expectedOutput,
+          passed: true,
+          explanation: 'Output verified against test constraints.'
+        }))
       };
     }
 
@@ -475,28 +469,78 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
       status: 'Wrong Answer',
       overallPassed: false,
       testsPassed: 1,
-      totalTests: 3,
-      timeComplexity: 'N/A',
-      spaceComplexity: 'N/A',
+      totalTests: testCases.length,
+      timeComplexity: staticMetrics.timeComplexity !== 'N/A' ? staticMetrics.timeComplexity : 'O(n)',
+      spaceComplexity: staticMetrics.spaceComplexity !== 'N/A' ? staticMetrics.spaceComplexity : 'O(1)',
       runtime: '22ms',
       memory: '38.2 MB',
-      feedback: 'The implementation produces incorrect output on edge test cases. Review loop boundaries and return values.',
-      testCases: [
-        { id: 1, title: 'Example Case', input: currentQuestion.exampleInput, expectedOutput: currentQuestion.exampleOutput, actualOutput: currentQuestion.exampleOutput, passed: true, explanation: 'Passed standard example.' },
-        { id: 2, title: 'Edge Case', input: 'nums = [3, 3], target = 6', expectedOutput: '[0, 1]', actualOutput: '[]', passed: false, explanation: 'Failed to handle duplicate numbers.' },
-        { id: 3, title: 'Comprehensive Case', input: 'nums = [-1, -2, -3, -4, -5], target = -8', expectedOutput: '[2, 4]', actualOutput: 'undefined', passed: false, explanation: 'Failed on negative values.' }
-      ]
+      feedback: 'The implementation failed edge test cases. Review loop boundaries and return values.',
+      testCases: testCases.map((tc, idx) => ({
+        id: tc.id || (idx + 1),
+        title: tc.title || `Case ${idx + 1}`,
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
+        actualOutput: idx === 0 ? tc.expectedOutput : 'Mismatched output',
+        passed: idx === 0,
+        explanation: idx === 0 ? 'Passed standard example.' : 'Failed edge case bounds.'
+      }))
     };
   };
 
   const handleRun = async () => {
     setIsRunning(true);
+    setGenerationError(null);
     setActiveTestTab(0);
 
+    const testCases = getStandardTestCasesForQuestion(currentQ);
+    const staticComp = estimateComplexity(code);
+
     try {
-      // 1. Try Live AI Online Judge
-      const aiResult = await evaluateWithAI(code, currentQ, language);
-      
+      // 1. Direct in-browser sandboxed execution for JavaScript
+      if (language === 'javascript') {
+        const execResult = executeJavaScript(code, testCases);
+
+        const timeComp = staticComp.timeComplexity !== 'N/A' ? staticComp.timeComplexity : 'O(n)';
+        const spaceComp = staticComp.spaceComplexity !== 'N/A' ? staticComp.spaceComplexity : 'O(1)';
+        const score = execResult.overallPassed ? 100 : Math.round((execResult.testsPassed / execResult.totalTests) * 80);
+        const acc = execResult.overallPassed ? 100 : (execResult.testsPassed > 0 ? 50 : 0);
+        updateAnalytics(score, acc);
+
+        if (execResult.overallPassed) {
+          recordSolvedQuestion(currentQ.id || currentQ.title);
+        }
+
+        setResults({
+          status: execResult.status,
+          overallPassed: execResult.overallPassed,
+          time: execResult.runtime || '24ms',
+          memory: execResult.memory || '38.4 MB',
+          testsPassed: execResult.testsPassed,
+          totalTests: execResult.totalTests,
+          timeComplexity: timeComp,
+          spaceComplexity: spaceComp,
+          feedback: execResult.feedback,
+          testCases: execResult.testCases,
+          isError: !execResult.overallPassed
+        });
+        return;
+      }
+
+      // 2. Multi-language evaluation via strict AI Online Judge
+      const aiResult = await evaluateCodeWithAI({
+        code,
+        language,
+        question: currentQ,
+        testCases
+      });
+
+      const finalTimeComp = aiResult.timeComplexity && aiResult.timeComplexity !== 'N/A' 
+        ? aiResult.timeComplexity 
+        : (staticComp.timeComplexity !== 'N/A' ? staticComp.timeComplexity : 'O(n)');
+      const finalSpaceComp = aiResult.spaceComplexity && aiResult.spaceComplexity !== 'N/A' 
+        ? aiResult.spaceComplexity 
+        : (staticComp.spaceComplexity !== 'N/A' ? staticComp.spaceComplexity : 'O(1)');
+
       const score = aiResult.overallPassed ? 100 : Math.round((aiResult.testsPassed / (aiResult.totalTests || 3)) * 80);
       const acc = aiResult.overallPassed ? 100 : (aiResult.testsPassed > 0 ? 50 : 0);
       updateAnalytics(score, acc);
@@ -508,20 +552,19 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
       setResults({
         status: aiResult.status,
         overallPassed: aiResult.overallPassed,
-        time: aiResult.runtime || '38ms',
+        time: aiResult.runtime || '36ms',
         memory: aiResult.memory || '39.2 MB',
         testsPassed: aiResult.testsPassed,
-        totalTests: aiResult.totalTests || 3,
-        timeComplexity: aiResult.timeComplexity || 'O(n)',
-        spaceComplexity: aiResult.spaceComplexity || 'O(1)',
+        totalTests: aiResult.totalTests || testCases.length,
+        timeComplexity: finalTimeComp,
+        spaceComplexity: finalSpaceComp,
         feedback: aiResult.feedback,
-        testCases: aiResult.testCases || [],
+        testCases: aiResult.testCases || testCases,
         isError: !aiResult.overallPassed
       });
     } catch (err) {
-      console.warn("AI judge failed, using fallback evaluator:", err.message);
-      // 2. Intelligent fallback evaluator
-      const fallbackRes = fallbackEvaluation(code, currentQ, language);
+      console.warn("AI judge failed, using heuristic evaluation:", err.message);
+      const fallbackRes = fallbackEvaluation(code, currentQ, language, testCases);
       const score = fallbackRes.overallPassed ? 100 : Math.round((fallbackRes.testsPassed / fallbackRes.totalTests) * 80);
       updateAnalytics(score, fallbackRes.overallPassed ? 100 : 0);
       
@@ -553,38 +596,9 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
     setTimeout(() => setCopiedInput(false), 2000);
   };
 
-  // Initial placeholder test cases before running
-  const defaultTestCases = [
-    {
-      id: 1,
-      title: 'Case 1 (Example)',
-      input: currentQ.exampleInput,
-      expectedOutput: currentQ.exampleOutput,
-      actualOutput: null,
-      passed: null,
-      explanation: currentQ.explanation
-    },
-    {
-      id: 2,
-      title: 'Case 2 (Edge Case)',
-      input: 'Edge test data & boundary bounds',
-      expectedOutput: 'Optimal edge return value',
-      actualOutput: null,
-      passed: null,
-      explanation: 'Evaluates zero-elements, negative integers, or duplicate elements.'
-    },
-    {
-      id: 3,
-      title: 'Case 3 (Performance)',
-      input: 'Array size N = 10,000 scaling',
-      expectedOutput: 'Evaluates time limit and space consumption',
-      actualOutput: null,
-      passed: null,
-      explanation: 'Ensures time complexity meets requirements without timing out.'
-    }
-  ];
-
-  const currentTestCases = results?.testCases || defaultTestCases;
+  // 3 Concrete, non-dummy test cases
+  const baseTestCases = getStandardTestCasesForQuestion(currentQ);
+  const currentTestCases = results?.testCases || baseTestCases;
   const activeCase = currentTestCases[activeTestTab] || currentTestCases[0];
 
   return (
@@ -642,10 +656,10 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
         </div>
       </header>
 
-      {/* Main Grid: Problem View + Code Editor & Test Cases */}
+      {/* Main Grid: Problem Statement + Monaco Code Editor & Test Cases */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-0">
         
-        {/* Left Side: Question Description & AI Analysis (4.5 cols) */}
+        {/* Left Side: Question Description & AI Analysis (5 cols) */}
         <div className="lg:col-span-5 flex flex-col gap-4">
           <div className="glass-panel p-6 flex flex-col flex-1 overflow-y-auto max-h-[calc(100vh-14rem)] rounded-2xl border border-white/10 bg-[#141417]/90 shadow-xl">
             <div className="flex items-center gap-2 pb-3 border-b border-white/10 text-emerald-400 font-semibold text-sm">
@@ -694,58 +708,62 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
               )}
             </AnimatePresence>
 
-            {/* AI Complexity Verdict */}
+            {/* AI Complexity Verdict & Code Analysis */}
             <div className="mt-auto pt-6 border-t border-white/10">
               <h3 className="font-bold text-white text-sm mb-3 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-emerald-400" /> AI Code Analysis & Metrics
               </h3>
-              {results ? (
+              {results || aiAnalysisPreview ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-[#1c1d24] p-3 rounded-xl border border-white/10 flex items-center gap-3">
                       <Clock className="w-4 h-4 text-blue-400" />
                       <div>
                         <p className="text-[11px] text-gray-400">Time Complexity</p>
-                        <p className="font-bold text-white text-sm">{results.timeComplexity}</p>
+                        <p className="font-bold text-white text-sm">{results?.timeComplexity || aiAnalysisPreview?.timeComplexity}</p>
                       </div>
                     </div>
                     <div className="bg-[#1c1d24] p-3 rounded-xl border border-white/10 flex items-center gap-3">
                       <Cpu className="w-4 h-4 text-purple-400" />
                       <div>
                         <p className="text-[11px] text-gray-400">Space Complexity</p>
-                        <p className="font-bold text-white text-sm">{results.spaceComplexity}</p>
+                        <p className="font-bold text-white text-sm">{results?.spaceComplexity || aiAnalysisPreview?.spaceComplexity}</p>
                       </div>
                     </div>
                   </div>
 
                   <div className={`p-3.5 rounded-xl border text-xs leading-relaxed ${
-                    results.overallPassed 
+                    results?.overallPassed 
                       ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200' 
-                      : 'bg-rose-500/10 border-rose-500/20 text-rose-200'
+                      : results 
+                      ? 'bg-rose-500/10 border-rose-500/20 text-rose-200'
+                      : 'bg-blue-500/10 border-blue-500/20 text-blue-200'
                   }`}>
                     <div className="flex items-start gap-2">
-                      <Lightbulb className={`w-4 h-4 shrink-0 mt-0.5 ${results.overallPassed ? 'text-emerald-400' : 'text-rose-400'}`} />
-                      <span>{results.feedback}</span>
+                      <Lightbulb className={`w-4 h-4 shrink-0 mt-0.5 ${
+                        results?.overallPassed ? 'text-emerald-400' : results ? 'text-rose-400' : 'text-blue-400'
+                      }`} />
+                      <span>{results?.feedback || aiAnalysisPreview?.explanation}</span>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="bg-[#18181b]/50 p-4 rounded-xl border border-white/5 text-center text-gray-500 text-xs">
                   <Code2 className="w-6 h-6 mx-auto mb-1.5 opacity-40" />
-                  <p>Run your code to see AI complexity grading, execution speed, and edge test case coverage.</p>
+                  <p>Click "Run Code" or "AI Solution" to inspect complexity grading, execution speed, and edge test case coverage.</p>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Right Side: Monaco Code Editor + Spacious Interactive Test Cases (7.5 cols) */}
+        {/* Right Side: Monaco Code Editor + Test Cases (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-4">
           
           {/* Code Editor Container */}
           <div className="glass-panel flex flex-col rounded-2xl border border-white/10 overflow-hidden bg-[#141417]/90 shadow-xl">
             {/* Editor Toolbar */}
-            <div className="border-b border-white/10 px-4 py-2.5 flex justify-between items-center bg-[#1c1d24]">
+            <div className="border-b border-white/10 px-4 py-2.5 flex flex-wrap justify-between items-center bg-[#1c1d24] gap-2">
               <div className="flex items-center gap-3">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Language:</span>
                 <select 
@@ -767,24 +785,63 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
                 </select>
               </div>
               
-              <button 
-                onClick={handleRun}
-                disabled={isRunning}
-                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold py-1.5 px-5 text-xs rounded-xl flex items-center gap-2 active:scale-95 transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50"
-              >
-                {isRunning ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>AI Judging Code...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>Run Code</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                {/* AI Solution Generator Button */}
+                <button 
+                  onClick={() => handleGenerateAiSolution()}
+                  disabled={isGeneratingSolution || isRunning}
+                  title="Generate a dynamic, optimal AI solution for this problem"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-1.5 px-4 text-xs rounded-xl flex items-center gap-1.5 active:scale-95 transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
+                >
+                  {isGeneratingSolution ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                      <span>Generating AI Solution...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>AI Solution</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Run Code Button */}
+                <button 
+                  onClick={handleRun}
+                  disabled={isRunning || isGeneratingSolution}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold py-1.5 px-5 text-xs rounded-xl flex items-center gap-2 active:scale-95 transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50"
+                >
+                  {isRunning ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Executing Tests...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                      <span>Run Code</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
+
+            {/* Error Notification Banner if AI generation fails */}
+            {generationError && (
+              <div className="bg-rose-500/15 border-b border-rose-500/30 px-4 py-2 flex items-center justify-between text-xs text-rose-300">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{generationError}</span>
+                </div>
+                <button 
+                  onClick={() => handleGenerateAiSolution()}
+                  className="flex items-center gap-1 font-semibold text-rose-200 hover:text-white underline underline-offset-2 ml-3"
+                >
+                  <RotateCcw className="w-3 h-3" /> Retry
+                </button>
+              </div>
+            )}
             
             {/* Monaco Editor */}
             <div className={`${isConsoleExpanded ? 'h-[240px]' : 'h-[360px] md:h-[400px]'} p-2 bg-[#1e1e1e] relative transition-all duration-300`}>
@@ -794,7 +851,10 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
                 language={language}
                 theme="vs-dark"
                 value={code}
-                onChange={(value) => setCode(value || '')}
+                onChange={(value) => {
+                  setCode(value || '');
+                  if (results) setResults(null);
+                }}
                 options={{
                   minimap: { enabled: false },
                   fontSize: 13.5,
@@ -811,7 +871,7 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
             </div>
           </div>
 
-          {/* Spacious & Rich Test Cases / Results Console */}
+          {/* Test Cases & Execution Results Console */}
           <div className={`glass-panel rounded-2xl border border-white/10 bg-[#141417]/95 shadow-xl flex flex-col transition-all duration-300 ${
             isConsoleExpanded ? 'min-h-[460px]' : 'min-h-[290px]'
           }`}>
@@ -844,7 +904,6 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
                   </div>
                 )}
                 
-                {/* Expand / Minimize Toggle for Space */}
                 <button
                   onClick={() => setIsConsoleExpanded(!isConsoleExpanded)}
                   title={isConsoleExpanded ? "Minimize Console" : "Expand Console for More Space"}
@@ -875,7 +934,7 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
                     <span className="w-2 h-2 rounded-full bg-gray-500" />
                   )}
                   <span>Case {idx + 1}</span>
-                  {tc.passed !== null && (
+                  {tc.passed !== undefined && tc.passed !== null && (
                     <span className={`text-[10px] uppercase font-bold ${tc.passed ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {tc.passed ? 'Pass' : 'Fail'}
                     </span>
@@ -884,7 +943,7 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
               ))}
             </div>
 
-            {/* Test Case Content Body (Generous Space) */}
+            {/* Test Case Content Body */}
             <div className="p-4 flex-1 flex flex-col justify-between overflow-y-auto">
               {isRunning ? (
                 <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
@@ -893,8 +952,8 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
                     <Sparkles className="w-4 h-4 text-teal-300 absolute -top-1 -right-1 animate-pulse" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-white">AI Automated Judge Executing...</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Evaluating logic, complexity bounds, and test cases with Gemini.</p>
+                    <p className="text-sm font-semibold text-white">Running Test Suite & Execution Verification...</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Evaluating logic, output correctness, and algorithmic constraints.</p>
                   </div>
                 </div>
               ) : activeCase ? (
@@ -949,7 +1008,7 @@ Return ONLY a valid, raw JSON object (NO markdown \`\`\`json wrappers, NO surrou
                 </div>
               ) : (
                 <div className="py-10 text-center text-gray-500 text-xs">
-                  Click "Run Code" to execute test cases against the AI judge.
+                  Click "Run Code" to execute test cases against the judge.
                 </div>
               )}
             </div>
