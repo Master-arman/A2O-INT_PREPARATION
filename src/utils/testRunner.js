@@ -480,18 +480,154 @@ export function getStandardTestCasesForQuestion(q) {
     {
       id: 2,
       title: 'Case 2 (Boundary Condition)',
-      input: `Boundary evaluation: ${exIn}`,
+      input: exIn,
       expectedOutput: exOut,
       explanation: 'Evaluates boundary limits and base cases.'
     },
     {
       id: 3,
       title: 'Case 3 (Scaling & Constraints)',
-      input: `Constraint verification: ${exIn}`,
+      input: exIn,
       expectedOutput: exOut,
       explanation: 'Verifies performance under edge input values.'
     }
   ];
+}
+
+/**
+ * Statically extracts function names defined in the user's code
+ */
+export function extractFunctionNames(code) {
+  if (!code) return [];
+  const names = [];
+  
+  const funcDeclRegex = /(?:async\s+)?function\s+([a-zA-Z0-9_$]+)\s*\(/g;
+  let match;
+  while ((match = funcDeclRegex.exec(code)) !== null) {
+    if (!names.includes(match[1])) names.push(match[1]);
+  }
+
+  const varFuncRegex = /(?:const|let|var)\s+([a-zA-Z0-9_$]+)\s*=\s*(?:async\s*)?(?:function|\([^)]*\)\s*=>|[a-zA-Z0-9_$]+\s*=>)/g;
+  while ((match = varFuncRegex.exec(code)) !== null) {
+    if (!names.includes(match[1])) names.push(match[1]);
+  }
+
+  return names;
+}
+
+/**
+ * Extracts parameter names from input string like "nums = [1, 3, 2], k = 2" -> ["nums", "k"]
+ */
+export function extractParamNamesFromInput(exampleInput) {
+  if (!exampleInput || typeof exampleInput !== 'string') return [];
+  const params = [];
+  const matches = exampleInput.matchAll(/([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=/g);
+  for (const m of matches) {
+    if (!['var', 'let', 'const'].includes(m[1]) && !params.includes(m[1])) {
+      params.push(m[1]);
+    }
+  }
+  return params;
+}
+
+/**
+ * Intelligently parses problem input strings like "nums = [1, 3, 2], k = 2"
+ * or single values into arrays of concrete JS runtime arguments
+ */
+export function parseInputStringToArgs(inputStr) {
+  if (inputStr === undefined || inputStr === null) return [];
+  if (typeof inputStr !== 'string') return [inputStr];
+  let cleanInput = inputStr.trim();
+  cleanInput = cleanInput.replace(/^(?:Boundary evaluation|Constraint verification|Edge case verification):\s*/i, '').trim();
+  if (!cleanInput) return [];
+
+  const splitTopLevel = (text, delimiter = ',') => {
+    const parts = [];
+    let cur = '';
+    let depthBracket = 0;
+    let depthBrace = 0;
+    let depthParen = 0;
+    let inQuote = null;
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuote) {
+        cur += ch;
+        if (ch === inQuote && text[i - 1] !== '\\') inQuote = null;
+      } else if (ch === '"' || ch === "'") {
+        inQuote = ch;
+        cur += ch;
+      } else if (ch === '[') {
+        depthBracket++;
+        cur += ch;
+      } else if (ch === ']') {
+        depthBracket--;
+        cur += ch;
+      } else if (ch === '{') {
+        depthBrace++;
+        cur += ch;
+      } else if (ch === '}') {
+        depthBrace--;
+        cur += ch;
+      } else if (ch === '(') {
+        depthParen++;
+        cur += ch;
+      } else if (ch === ')') {
+        depthParen--;
+        cur += ch;
+      } else if (ch === delimiter && depthBracket === 0 && depthBrace === 0 && depthParen === 0) {
+        parts.push(cur.trim());
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    if (cur.trim()) parts.push(cur.trim());
+    return parts;
+  };
+
+  const lines = cleanInput.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let entries = [];
+  if (lines.length > 1) {
+    entries = lines;
+  } else {
+    entries = splitTopLevel(cleanInput, ',');
+  }
+
+  const parsedArgs = [];
+
+  for (const entry of entries) {
+    let valStr = entry.trim();
+    const eqIdx = valStr.indexOf('=');
+    if (eqIdx !== -1) {
+      const lhs = valStr.slice(0, eqIdx).trim();
+      if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(lhs)) {
+        valStr = valStr.slice(eqIdx + 1).trim();
+      }
+    }
+
+    try {
+      parsedArgs.push(JSON.parse(valStr));
+      continue;
+    } catch {}
+
+    try {
+      if (valStr.startsWith("'") && valStr.endsWith("'")) {
+        parsedArgs.push(valStr.slice(1, -1));
+        continue;
+      }
+      const jsonFormatted = valStr.replace(/'/g, '"');
+      parsedArgs.push(JSON.parse(jsonFormatted));
+      continue;
+    } catch {}
+
+    if (valStr.toLowerCase() === 'true') parsedArgs.push(true);
+    else if (valStr.toLowerCase() === 'false') parsedArgs.push(false);
+    else if (!isNaN(Number(valStr)) && valStr !== '') parsedArgs.push(Number(valStr));
+    else parsedArgs.push(valStr);
+  }
+
+  return parsedArgs;
 }
 
 /**
@@ -508,19 +644,34 @@ export function executeJavaScript(userCode, testCases) {
   };
 
   try {
+    const declaredFuncs = extractFunctionNames(userCode);
+    const dynamicFuncChecks = declaredFuncs.map(fn => 
+      `try { if (typeof ${fn} === 'function') return ${fn}; } catch(e) {}`
+    ).join('\n');
+
     // Compile user code in isolated scope
     const runner = new Function(`
+      // Shadow blocking window dialogs
+      const alert = () => {};
+      const prompt = () => null;
+      const confirm = () => true;
+
       ${userCode}
-      // Discover candidate function
+
+      // 1. Standard candidate function names
       if (typeof solve === 'function') return solve;
       if (typeof solution === 'function') return solution;
+
+      // 2. Dynamic user-defined functions discovered in userCode
+      ${dynamicFuncChecks}
+
       if (typeof twoSum === 'function') return twoSum;
       if (typeof isValid === 'function') return isValid;
       if (typeof reverseList === 'function') return reverseList;
       if (typeof maxSubArray === 'function') return maxSubArray;
       if (typeof longestPalindrome === 'function') return longestPalindrome;
 
-      // Check if user defined DatabaseConnection class or Singleton
+      // 3. Check if user defined DatabaseConnection class or Singleton
       if (typeof DatabaseConnection === 'function') {
         return function runSingletonTest() {
           if (typeof DatabaseConnection.getInstance === 'function') {
@@ -531,10 +682,17 @@ export function executeJavaScript(userCode, testCases) {
           return false;
         };
       }
-      
-      // Auto-detect any function declared by user
-      const globalFuncs = Object.keys(this).filter(k => typeof this[k] === 'function');
-      if (globalFuncs.length > 0) return this[globalFuncs[0]];
+
+      // 4. Check if Solution class exists with methods
+      if (typeof Solution === 'function') {
+        try {
+          const solInst = new Solution();
+          for (const m of ['solve', 'solution', ...${JSON.stringify(declaredFuncs)}]) {
+            if (typeof solInst[m] === 'function') return solInst[m].bind(solInst);
+          }
+        } catch(e) {}
+      }
+
       return null;
     `);
 
@@ -567,12 +725,14 @@ export function executeJavaScript(userCode, testCases) {
       let execError = null;
 
       try {
-        // Deep clone args if present
-        const clonedArgs = tc.args ? JSON.parse(JSON.stringify(tc.args)) : [];
+        let clonedArgs = tc.args ? JSON.parse(JSON.stringify(tc.args)) : [];
+        if (clonedArgs.length === 0 && tc.input) {
+          clonedArgs = parseInputStringToArgs(tc.input);
+        }
+
         if (clonedArgs.length > 0) {
           actualResult = targetFn(...clonedArgs);
         } else {
-          // Parse from input string if no direct args
           actualResult = targetFn(tc.input);
         }
       } catch (err) {

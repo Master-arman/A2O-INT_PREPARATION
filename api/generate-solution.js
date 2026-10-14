@@ -52,7 +52,7 @@ ${starterCode || ''}
 
 REQUIREMENTS:
 1. Generate the exact complete, optimal working function matching the starter signature.
-2. Do not just return starter code or dummy comments. Write the real, optimal algorithm.
+2. The function MUST accept the input parameters defined by the problem, compute the solution algorithmically, and RETURN the final result.
 3. Calculate accurate Time Complexity (e.g. O(n), O(n log n)) and Space Complexity (e.g. O(1), O(n)).
 4. Provide a clear, concise 2-sentence explanation of the algorithm approach.
 

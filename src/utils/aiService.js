@@ -82,9 +82,10 @@ ${starterCode}
 \`\`\`
 
 REQUIREMENTS:
-1. Return ONLY valid, complete, working ${targetLang} code matching the function signature.
-2. Provide exact Time Complexity (e.g. O(n)) and Space Complexity (e.g. O(1)).
-3. Provide a brief 2-sentence explanation of the algorithm approach.
+1. Return ONLY valid, complete, working ${targetLang} code matching the starter function signature.
+2. The function MUST accept the input parameters defined by the problem, compute the solution algorithmically, and RETURN the final result.
+3. Provide exact Time Complexity (e.g. O(n)) and Space Complexity (e.g. O(1)).
+4. Provide a brief 2-sentence explanation of the algorithm approach.
 
 Return ONLY a raw JSON object (no markdown, no \`\`\`json wrappers):
 {

@@ -25,7 +25,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import { recordSolvedQuestion } from '../../utils/activityTracker';
 import { generateAiSolution, evaluateCodeWithAI } from '../../utils/aiService';
-import { executeJavaScript, getStandardTestCasesForQuestion, estimateComplexity, cleanExpectedOutput } from '../../utils/testRunner';
+import { executeJavaScript, getStandardTestCasesForQuestion, estimateComplexity, cleanExpectedOutput, extractParamNamesFromInput } from '../../utils/testRunner';
 
 const FALLBACK_QUESTION = {
   id: 'FB1',
@@ -239,18 +239,21 @@ bool solve() {
       }
     }
 
+    const paramsList = extractParamNamesFromInput(q.exampleInput);
+    const params = paramsList.join(', ');
+
     switch (lang) {
-      case 'c': return `// C Solution\n#include <stdio.h>\n\nvoid solve() {\n    // Write your code here\n}\n`;
-      case 'typescript': return `function solve(): any {\n  // Write your code here\n}\n`;
-      case 'csharp': return `public class Solution {\n    public void Solve() {\n        // Write your code here\n    }\n}`;
-      case 'php': return `<?php\nclass Solution {\n    function solve() {\n        // Write your code here\n    }\n}`;
-      case 'kotlin': return `class Solution {\n    fun solve() {\n        // Write your code here\n    }\n}`;
-      case 'swift': return `class Solution {\n    func solve() {\n        // Write your code here\n    }\n}`;
-      case 'dart': return `class Solution {\n  void solve() {\n    // Write your code here\n  }\n}`;
-      case 'cpp': return `class Solution {\npublic:\n    void solve() {\n        // Write your code here\n    }\n};`;
-      case 'java': return `class Solution {\n    public void solve() {\n        // Write your code here\n    }\n}`;
-      case 'python': return `class Solution:\n    def solve(self):\n        # Write your code here\n        pass`;
-      default: return `function solve() {\n  // Write your code here\n}`;
+      case 'c': return `// C Solution\n#include <stdio.h>\n\nvoid solve(${params}) {\n    // Write your code here\n}\n`;
+      case 'typescript': return `function solve(${params ? paramsList.map(p => `${p}: any`).join(', ') : ''}): any {\n  // Write your code here\n}\n`;
+      case 'csharp': return `public class Solution {\n    public void Solve(${params}) {\n        // Write your code here\n    }\n}`;
+      case 'php': return `<?php\nclass Solution {\n    function solve(${params}) {\n        // Write your code here\n    }\n}`;
+      case 'kotlin': return `class Solution {\n    fun solve(${params}) {\n        // Write your code here\n    }\n}`;
+      case 'swift': return `class Solution {\n    func solve(${params}) {\n        // Write your code here\n    }\n}`;
+      case 'dart': return `class Solution {\n  void solve(${params}) {\n    // Write your code here\n  }\n}`;
+      case 'cpp': return `class Solution {\npublic:\n    void solve(${params}) {\n        // Write your code here\n    }\n};`;
+      case 'java': return `class Solution {\n    public void solve(${params}) {\n        // Write your code here\n    }\n}`;
+      case 'python': return `class Solution:\n    def solve(self${params ? ', ' + params : ''}):\n        # Write your code here\n        pass`;
+      default: return `function solve(${params}) {\n  // Write your code here\n}`;
     }
   };
 
